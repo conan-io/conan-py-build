@@ -49,10 +49,13 @@ jobs:
         run: |
           pip install conan
           conan profile detect --force
-      - name: Create cpython-portable (3.11, 3.12)
+      - name: Create cpython-portable (${{ matrix.py }})
         run: |
-          conan create recipes/cpython --version=3.11.14
-          conan create recipes/cpython --version=3.12.12
+          if [ "${{ matrix.py }}" = "3.11" ]; then
+            conan create recipes/cpython --version=3.11.14
+          else
+            conan create recipes/cpython --version=3.12.12
+          fi
         shell: bash
       - name: Install backend
         run: pip install -e .
