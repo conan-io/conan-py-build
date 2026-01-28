@@ -62,6 +62,11 @@ jobs:
           CONAN_CPYTHON_VERSION: ${{ matrix.py }}
         run: pip wheel . --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w dist/
         shell: bash
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.runner }}-${{ matrix.profile }}-py${{ matrix.py }}
+          path: examples/basic/dist/
 
   build-default:
     strategy:
@@ -80,3 +85,8 @@ jobs:
         working-directory: examples/basic
         run: pip wheel . --no-build-isolation -w dist/
         shell: bash
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.runner }}
+          path: examples/basic/dist/
