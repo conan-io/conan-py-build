@@ -1,0 +1,82 @@
+name: Build wheels
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-with-profile:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            profile: linux.jinja
+            py: "3.11"
+          - runner: ubuntu-latest
+            profile: linux.jinja
+            py: "3.12"
+          - runner: ubuntu-24.04-arm
+            profile: linux.jinja
+            py: "3.11"
+          - runner: ubuntu-24.04-arm
+            profile: linux.jinja
+            py: "3.12"
+          - runner: windows-latest
+            profile: windows.jinja
+            py: "3.11"
+          - runner: windows-latest
+            profile: windows.jinja
+            py: "3.12"
+          - runner: macos-14
+            profile: macos.jinja
+            py: "3.11"
+          - runner: macos-14
+            profile: macos.jinja
+            py: "3.12"
+          - runner: macos-15-intel
+            profile: macos.jinja
+            py: "3.11"
+          - runner: macos-15-intel
+            profile: macos.jinja
+            py: "3.12"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Conan and detect profile
+        run: |
+          pip install conan
+          conan profile detect --force
+      - name: Create cpython-portable (3.11, 3.12)
+        run: |
+          conan create recipes/cpython --version=3.11.14
+          conan create recipes/cpython --version=3.12.12
+        shell: bash
+      - name: Install backend
+        run: pip install -e .
+      - name: Build wheel
+        working-directory: examples/basic
+        env:
+          CONAN_CPYTHON_VERSION: ${{ matrix.py }}
+        run: pip wheel . --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w dist/
+        shell: bash
+
+  build-default:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-14, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend
+        run: pip install -e .
+      - name: Build wheel
+        working-directory: examples/basic
+        run: pip wheel . --no-build-isolation -w dist/
+        shell: bash
