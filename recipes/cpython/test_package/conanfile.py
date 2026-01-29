@@ -32,7 +32,7 @@ class TestPackageConan(ConanFile):
         # Conan arch -> platform.machine() on various OSes
         arch_map = {
             "armv8": ("arm64", "aarch64"),
-            "x86_64": ("x86_64",),
+            "x86_64": ("x86_64", "AMD64"),
             "armv7": ("armv7l",),
             "AMD64": ("AMD64",),
             "x86": ("x86",),
