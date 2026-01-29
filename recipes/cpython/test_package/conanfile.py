@@ -7,7 +7,6 @@ import re
 class TestPackageConan(ConanFile):
     settings = "os", "arch"
     generators = "VirtualRunEnv"
-    test_type = "explicit"
 
     def requirements(self):
         self.requires(self.tested_reference_str)
