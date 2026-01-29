@@ -99,7 +99,9 @@ jobs:
         run: pip install cibuildwheel
       - name: Build wheels with cibuildwheel
         env:
-          CIBW_BEFORE_BUILD: "pip install -e {project}/../.. conan"
+          CONAN_PY_BUILD_ROOT: ${{ github.workspace }}
+          CIBW_ENVIRONMENT: "CONAN_PY_BUILD_ROOT=$CONAN_PY_BUILD_ROOT"
+          CIBW_BEFORE_BUILD: "pip install -e $CONAN_PY_BUILD_ROOT conan"
           CIBW_BUILD_FRONTEND_ARGS: --no-build-isolation
           CIBW_BUILD: cp312-macosx_arm64
           CIBW_TEST_COMMAND: python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; print('OK')"
