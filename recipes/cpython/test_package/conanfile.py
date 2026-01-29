@@ -26,8 +26,17 @@ class TestPackageConan(ConanFile):
         assert_python_version = "Python %s" % require_version
         assert assert_python_version in output_str
 
-        self.run(f'{python} -c "import platform;print(platform.platform())"', output, env="conanrun")
-        if self.settings.os == "Macos":
-            arch = "arm64" if self.settings.arch == "armv8" else str(self.settings.arch)
-            output_str = str(output.getvalue())
-            assert arch in output_str
+        # Check Python reports the expected architecture
+        self.run(f'{python} -c "import platform;print(platform.machine())"', output, env="conanrun")
+        output_str = str(output.getvalue())
+        # Conan arch -> platform.machine() on various OSes
+        arch_map = {
+            "armv8": ("arm64", "aarch64"),
+            "x86_64": ("x86_64",),
+            "armv7": ("armv7l",),
+            "AMD64": ("AMD64",),
+            "x86": ("x86",),
+            "ARM64": ("ARM64", "arm64"),
+        }
+        expected = arch_map.get(str(self.settings.arch), (str(self.settings.arch),))
+        assert any(arch in output_str for arch in expected), f"Expected one of {expected} in {output_str!r}"
