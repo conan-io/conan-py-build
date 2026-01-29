@@ -51,5 +51,7 @@ class CpythonPortableConan(ConanFile):
 
         if python_exe.exists():
             python_root = python_exe.parent.parent if python_exe.parent.name == "bin" else python_exe.parent
-            self.runenv_info.define("Python3_ROOT", str(python_root))
-            self.buildenv_info.define("Python3_ROOT", str(python_root))
+            python_root_str = str(python_root)
+            self.runenv_info.define("Python3_ROOT", python_root_str)
+            self.buildenv_info.define("Python3_ROOT", python_root_str)
+            self.buildenv_info.define("Python3_ROOT_DIR", python_root_str)

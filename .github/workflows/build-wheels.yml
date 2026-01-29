@@ -14,33 +14,12 @@ jobs:
         include:
           - runner: ubuntu-latest
             profile: linux.jinja
-            py: "3.11"
-          - runner: ubuntu-latest
-            profile: linux.jinja
-            py: "3.12"
-          - runner: ubuntu-24.04-arm
-            profile: linux.jinja
-            py: "3.11"
-          - runner: ubuntu-24.04-arm
-            profile: linux.jinja
-            py: "3.12"
-          - runner: windows-latest
-            profile: windows.jinja
-            py: "3.11"
-          - runner: windows-latest
-            profile: windows.jinja
             py: "3.12"
           - runner: macos-14
             profile: macos.jinja
-            py: "3.11"
-          - runner: macos-14
-            profile: macos.jinja
             py: "3.12"
-          - runner: macos-15-intel
-            profile: macos.jinja
-            py: "3.11"
-          - runner: macos-15-intel
-            profile: macos.jinja
+          - runner: windows-latest
+            profile: windows.jinja
             py: "3.12"
     runs-on: ${{ matrix.runner }}
     steps:
@@ -50,32 +29,30 @@ jobs:
           pip install conan
           conan profile detect --force
       - name: Create cpython-portable (${{ matrix.py }})
-        run: |
-          if [ "${{ matrix.py }}" = "3.11" ]; then
-            conan create recipes/cpython --version=3.11.14
-          else
-            conan create recipes/cpython --version=3.12.12
-          fi
+        run: conan create recipes/cpython --version=3.12.12
         shell: bash
       - name: Install backend
         run: pip install -e .
-      - name: Build wheel
-        working-directory: examples/basic
+      - name: Build wheels
         env:
           CONAN_CPYTHON_VERSION: ${{ matrix.py }}
-        run: pip wheel . --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w dist/
+        run: |
+          pip wheel examples/basic --no-build-isolation -C host-profile=examples/profiles/${{ matrix.profile }} -w examples/basic/dist/
+          pip wheel examples/basic-pybind11 --no-build-isolation -C host-profile=examples/profiles/${{ matrix.profile }} -w examples/basic-pybind11/dist/
         shell: bash
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.runner }}-${{ matrix.profile }}-py${{ matrix.py }}
-          path: examples/basic/dist/
+          name: wheels-${{ matrix.runner }}-py${{ matrix.py }}
+          path: |
+            examples/basic/dist/
+            examples/basic-pybind11/dist/
 
   build-default:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-14, macos-15-intel]
+        runner: [ubuntu-latest, macos-14]
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -84,12 +61,15 @@ jobs:
           python-version: "3.12"
       - name: Install backend
         run: pip install -e .
-      - name: Build wheel
-        working-directory: examples/basic
-        run: pip wheel . --no-build-isolation -w dist/
+      - name: Build wheels
+        run: |
+          pip wheel examples/basic --no-build-isolation -w examples/basic/dist/
+          pip wheel examples/basic-pybind11 --no-build-isolation -w examples/basic-pybind11/dist/
         shell: bash
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.runner }}
-          path: examples/basic/dist/
+          path: |
+            examples/basic/dist/
+            examples/basic-pybind11/dist/
