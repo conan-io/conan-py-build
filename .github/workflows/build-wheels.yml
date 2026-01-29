@@ -87,27 +87,3 @@ jobs:
           path: |
             examples/basic/dist/
             examples/basic-pybind11/dist/
-
-  cibuildwheel:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install cibuildwheel
-        run: pip install cibuildwheel
-      - name: Build wheels with cibuildwheel
-        env:
-          CONAN_PY_BUILD_ROOT: ${{ github.workspace }}
-          CIBW_ENVIRONMENT: "CONAN_PY_BUILD_ROOT=$CONAN_PY_BUILD_ROOT"
-          CIBW_BEFORE_BUILD: "pip install -e $CONAN_PY_BUILD_ROOT conan"
-          CIBW_BUILD_FRONTEND: "pip; args: --no-build-isolation"
-          CIBW_BUILD: cp312-macosx_arm64
-          CIBW_TEST_COMMAND: python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; print('OK')"
-        run: cibuildwheel examples/basic-pybind11
-      - name: Upload cibuildwheel wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-cibuildwheel
-          path: wheelhouse/
