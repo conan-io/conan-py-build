@@ -23,7 +23,7 @@ pip install -e .
 # TODO: Change to requires = ["conan-py-build"] once published to PyPI
 # For now, install manually: pip install -e .
 requires = []
-build-backend = "conan_py_build"
+build-backend = "conan_py_build.build"
 
 [project]
 name = "mypackage"
