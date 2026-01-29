@@ -37,8 +37,8 @@ jobs:
         env:
           CONAN_CPYTHON_VERSION: ${{ matrix.py }}
         run: |
-          pip wheel examples/basic --no-build-isolation -C host-profile=examples/profiles/${{ matrix.profile }} -w examples/basic/dist/
-          pip wheel examples/basic-pybind11 --no-build-isolation -C host-profile=examples/profiles/${{ matrix.profile }} -w examples/basic-pybind11/dist/
+          pip wheel examples/basic --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic/dist/
+          pip wheel examples/basic-pybind11 --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic-pybind11/dist/
         shell: bash
       - name: Upload wheels
         uses: actions/upload-artifact@v4
