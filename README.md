@@ -73,12 +73,12 @@ Pass configuration options via `--config-settings`:
 
 ### Profiles
 
-Jinja profiles in `examples/profiles/`: `include(default)` + wheel tags. Set **`CONAN_CPYTHON_VERSION`** (e.g. `3.11`).
+Jinja profiles in `examples/profiles/`: `include(default)` + wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version (e.g. `3.12.12`).
 
 Example:
 
 ```bash
-export CONAN_CPYTHON_VERSION=3.11
+export CONAN_CPYTHON_VERSION=3.12.12
 pip wheel . --no-build-isolation \
     --config-settings="host-profile=examples/profiles/linux.jinja" \
     --config-settings="build-dir=./build" \

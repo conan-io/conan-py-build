@@ -32,10 +32,10 @@ pip uninstall myadder-pybind11 -y
 ### With custom Conan profiles
 
 The `examples/profiles/` directory contains Jinja profiles. Use
-`CONAN_CPYTHON_VERSION` to choose the Python version:
+`CONAN_CPYTHON_VERSION` to the full version (e.g. 3.12.12) to choose Python:
 
 ```bash
-export CONAN_CPYTHON_VERSION=3.12
+export CONAN_CPYTHON_VERSION=3.12.12
 pip wheel . --no-build-isolation \
     --config-settings="host-profile=../profiles/macos.jinja" \
     -w dist/ -vvv

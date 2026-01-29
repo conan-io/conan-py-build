@@ -45,7 +45,7 @@ jobs:
         run: pip install -e .
       - name: Build wheels
         run: |
-          export CONAN_CPYTHON_VERSION=$(echo "${{ matrix.py }}" | cut -d. -f1,2)
+          export CONAN_CPYTHON_VERSION=${{ matrix.py }}
           pip wheel examples/basic --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic/dist/
           pip wheel examples/basic-pybind11 --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic-pybind11/dist/
         shell: bash

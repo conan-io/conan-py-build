@@ -32,11 +32,11 @@ pip uninstall myadder -y
 
 ### With custom Conan profiles
 
-The `examples/profiles/` directory contains Jinja profiles that use `include(default)` and set `WHEEL_*` for wheel tags. Use the profile that matches your OS; set `CONAN_CPYTHON_VERSION` (e.g. `3.11`) to choose Python.
+The `examples/profiles/` directory contains Jinja profiles that use `include(default)` and set `WHEEL_*` for wheel tags. Use the profile that matches your OS; set `CONAN_CPYTHON_VERSION` to the full version (e.g. `3.12.12`) to choose Python.
 
 ```bash
 # macOS (run on a Mac)
-export CONAN_CPYTHON_VERSION=3.12
+export CONAN_CPYTHON_VERSION=3.12.12
 pip wheel . --no-build-isolation \
     --config-settings="host-profile=../profiles/macos.jinja" \
     -w dist/
