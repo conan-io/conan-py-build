@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conan-py-build"
+version = "0.1.0"
+description = "A minimal PEP 517 compliant build backend that uses Conan to build Python C/C++ extensions"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "The Conan team", email = "conan@jfrog.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+]
+keywords = ["build", "backend", "pep517", "conan", "c++", "cmake"]
+
+dependencies = [
+    "conan>=2.0",
+    "distlib>=0.3.0",
+    "packaging",
+    "pyproject-metadata",
+    "tomli>=1.2.3; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "build",
+]
+
+[project.urls]
+Homepage = "https://github.com/conan-io/conan-py-build"
+Issues = "https://github.com/conan-io/conan-py-build/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

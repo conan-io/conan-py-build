@@ -1,0 +1,11 @@
+[build-system]
+# TODO: Change to requires = ["conan-py-build"] once published to PyPI
+# For now, install manually: pip install -e ../..
+requires = []
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder"
+version = "0.1.0"
+description = "A simple Python package with C++ code that adds two numbers"
+requires-python = ">=3.8"
