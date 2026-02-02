@@ -62,3 +62,4 @@ examples/basic/*build*/
 recipes/cpython/test_package/*.sh
 recipes/cpython/test_package/*.bat
 recipes/cpython/test_package/*.ps1
+examples/basic-pybind11/*build*/

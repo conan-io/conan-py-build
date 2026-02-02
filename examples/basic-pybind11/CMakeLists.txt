@@ -12,3 +12,5 @@ target_link_libraries(_core PRIVATE pybind11::module fmt::fmt)
 if(APPLE)
     set_target_properties(_core PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
 endif()
+
+install(TARGETS _core DESTINATION myadder_pybind11)
