@@ -194,11 +194,18 @@ def _do_build_wheel(
     config: dict,
 ) -> str:
     """Internal function that performs the actual wheel build."""
-    build_dir = base_dir / "build"
-    build_dir.mkdir(exist_ok=True)
+    
+    # Staging = wheel platlib; build tree stays outside via cmake_layout.
+    staging_dir = base_dir / "package"
+    package_dir = base_dir / "package" / name
+    package_dir.mkdir(parents=True, exist_ok=True)
 
-    staging_dir = base_dir / "staging"
-    staging_dir.mkdir(exist_ok=True)
+    src_python_dir = source_dir / "src" / name
+    if src_python_dir.exists():
+        shutil.copytree(src_python_dir, package_dir, dirs_exist_ok=True)
+
+    build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
+
 
     # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
     # directory
@@ -218,13 +225,19 @@ def _do_build_wheel(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
         flush=True,
     )
+    # -of staging_dir: conanfile.package_folder = staging_dir, so
+    # cmake.install() installs there. 
+    # -c build_folder: build tree goes to
+    # base_dir/build, not inside staging.
     try:
         result = api.command.run(
             [
                 "build",
                 ".",
                 "-of",
-                str(build_dir),
+                str(staging_dir),
+                "-c",
+                build_folder_conf,
                 "--build=missing",
                 f"-pr:h={host_profile}",
                 f"-pr:b={build_profile}",
@@ -234,22 +247,6 @@ def _do_build_wheel(
         raise RuntimeError(f"Conan build failed: {e}") from e
 
     deps_graph = result.get("graph")
-
-    # Collect built files
-    package_dir = staging_dir / name
-    package_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy Python source files if they exist
-    src_python_dir = source_dir / "src" / name
-    if src_python_dir.exists():
-        shutil.copytree(src_python_dir, package_dir, dirs_exist_ok=True)
-
-    # Copy built extension modules (.so, .pyd, .dylib)
-    for ext in ["*.so", "*.pyd", "*.dylib"]:
-        for built_file in build_dir.rglob(ext):
-            dest = package_dir / built_file.name
-            shutil.copy2(built_file, dest)
-            print(f"  Copied extension: {built_file.name}")
 
     # Ensure __init__.py exists
     init_file = package_dir / "__init__.py"

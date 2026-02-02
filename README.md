@@ -30,7 +30,7 @@ name = "mypackage"
 version = "0.1.0"
 ```
 
-2. Create a `conanfile.py` with your C++ dependencies and build logic:
+2. Create a `conanfile.py` with your C++ dependencies and build logic. Your `CMakeLists.txt` must use `install(TARGETS ... DESTINATION <package_name>)` so extensions end up in the wheel:
 
 ```python
 from conan import ConanFile
@@ -50,6 +50,7 @@ class MyPackageConan(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+        cmake.install()
 ```
 
 3. Build the wheel:
@@ -90,6 +91,7 @@ pip wheel . --no-build-isolation \
 See the [examples/](examples/) directory for complete working examples:
 
 - **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
+- **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11
 
 ## License
 

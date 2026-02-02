@@ -1,7 +1,7 @@
 # Basic Example - myadder
 
-This example demonstrates a Python package with C++ code that uses the `fmt` library
-(managed by Conan) for formatted output with colors.
+This example demonstrates a Python package with C++ code that uses the `fmt`
+library (managed by Conan) for formatted output with colors.
 
 ## Build and Install
 
@@ -32,10 +32,12 @@ pip uninstall myadder -y
 
 ### With custom Conan profiles
 
-The `examples/profiles/` directory contains Jinja profiles that use `include(default)` and set `WHEEL_*` for wheel tags. Use the profile that matches your OS; set `CONAN_CPYTHON_VERSION` to the full version (e.g. `3.12.12`) to choose Python.
+The `examples/profiles/` directory contains Jinja profiles that use
+`include(default)` and set `WHEEL_*` for wheel tags. Use the profile that
+matches your OS. Set `CONAN_CPYTHON_VERSION` to the full version (e.g.
+`3.12.12`) to choose Python.
 
 ```bash
-# macOS (run on a Mac)
 export CONAN_CPYTHON_VERSION=3.12.12
 pip wheel . --no-build-isolation \
     --config-settings="host-profile=../profiles/macos.jinja" \
@@ -44,30 +46,12 @@ pip wheel . --no-build-isolation \
 
 ### Debug build (keep artifacts)
 
+If you omit `build-dir`, the backend uses a temporary directory (removed after
+the build). To keep artifacts for inspection, pass a path:
+
 ```bash
 pip wheel . --no-build-isolation --config-settings="build-dir=./my-build" -w dist/ -vvv
 
 # Inspect the directories:
-ls ./my-build/build/     # CMake output, compiled .so
-ls ./my-build/staging/   # What goes into the wheel
-```
-
-During the build, the backend uses:
-
-```
-(temp or ./my-build)/
-├── build/                          # Conan/CMake build artifacts
-│   └── build/Release/
-│       ├── generators/
-│       │   ├── conan_toolchain.cmake
-│       │   └── fmt-config.cmake
-│       ├── CMakeCache.txt
-│       └── _core.cpython-3xx-xxx.so
-└── staging/                        # Files packaged into the wheel
-    ├── myadder/
-    │   ├── __init__.py
-    │   └── _core.cpython-3xx-xxx.so
-    └── myadder-0.1.0.dist-info/
-        ├── METADATA
-        └── WHEEL
-```
+ls ./my-build/build/     # CMake build tree
+ls ./my-build/package/   # Wheel contents

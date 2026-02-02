@@ -32,3 +32,5 @@ if(APPLE)
         LINK_FLAGS "-undefined dynamic_lookup"
     )
 endif()
+
+install(TARGETS _core DESTINATION myadder)

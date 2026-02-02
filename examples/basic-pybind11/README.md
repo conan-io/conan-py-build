@@ -40,3 +40,11 @@ pip wheel . --no-build-isolation \
     --config-settings="host-profile=../profiles/macos.jinja" \
     -w dist/ -vvv
 ```
+
+### Debug build (keep artifacts)
+
+To keep build artifacts for inspection, use `build-dir`.
+
+```bash
+pip wheel . --no-build-isolation --config-settings="build-dir=./my-build" -w dist/ -vvv
+```

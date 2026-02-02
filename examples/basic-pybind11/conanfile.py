@@ -17,3 +17,4 @@ class MyadderPybind11Conan(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+        cmake.install()

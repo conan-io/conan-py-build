@@ -16,3 +16,4 @@ class MyadderConan(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+        cmake.install()
