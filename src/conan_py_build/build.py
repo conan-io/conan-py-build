@@ -233,19 +233,22 @@ def _do_build_wheel(
     # cmake.install() installs there. 
     # -c build_folder: build tree goes to
     # base_dir/build, not inside staging.
-    result = api.command.run(
-        [
-            "build",
-            ".",
-            "-of",
-            str(staging_dir),
-            "-c",
-            build_folder_conf,
-            "--build=missing",
-            f"-pr:h={host_profile}",
-            f"-pr:b={build_profile}",
-        ]
-    )
+    try:
+        result = api.command.run(
+            [
+                "build",
+                ".",
+                "-of",
+                str(staging_dir),
+                "-c",
+                build_folder_conf,
+                "--build=missing",
+                f"-pr:h={host_profile}",
+                f"-pr:b={build_profile}",
+            ]
+        )
+    except Exception as e:
+        raise RuntimeError(f"Conan build failed: {e}") from e
 
     deps_graph = result.get("graph")
 
