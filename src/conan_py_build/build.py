@@ -195,20 +195,16 @@ def _do_build_wheel(
 ) -> str:
     """Internal function that performs the actual wheel build."""
     
-    # staging_dir = base_dir/package: contents that are packed into the wheel (platlib).
+    # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
-    staging_dir.mkdir(parents=True, exist_ok=True)
-
-    package_dir = staging_dir / name
+    package_dir = base_dir / "package" / name
     package_dir.mkdir(parents=True, exist_ok=True)
 
     src_python_dir = source_dir / "src" / name
     if src_python_dir.exists():
         shutil.copytree(src_python_dir, package_dir, dirs_exist_ok=True)
 
-    # Put build tree outside staging via tools.cmake.cmake_layout:build_folder (absolute path).
-    build_dir_absolute = str((base_dir / "build").resolve())
-    build_folder_conf = f"tools.cmake.cmake_layout:build_folder={build_dir_absolute}"
+    build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
 
 
     # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
