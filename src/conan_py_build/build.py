@@ -205,6 +205,7 @@ def _do_build_wheel(
         shutil.copytree(src_python_dir, package_dir, dirs_exist_ok=True)
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
+    user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
 
     # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
@@ -238,6 +239,8 @@ def _do_build_wheel(
                 str(staging_dir),
                 "-c",
                 build_folder_conf,
+                "-c",
+                user_presets_conf,
                 "--build=missing",
                 f"-pr:h={host_profile}",
                 f"-pr:b={build_profile}",
