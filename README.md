@@ -72,6 +72,13 @@ Pass configuration options via `--config-settings`:
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
+### Dynamic version
+
+There is limited support for dynamic version: set `dynamic = ["version"]` in
+`[project]` (no `version` key) and point to a Python file via
+`[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
+backend reads `__version__ = "x.y.z"` from that file.
+
 ### Profiles
 
 Jinja profiles in `examples/profiles/`: `include(default)` + wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version (e.g. `3.12.12`).
@@ -91,7 +98,7 @@ pip wheel . --no-build-isolation \
 See the [examples/](examples/) directory for complete working examples:
 
 - **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
-- **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11
+- **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11 (with dynamic version from `__init__.py`)
 
 ## License
 
