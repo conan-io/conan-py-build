@@ -72,6 +72,7 @@ def _get_project_metadata() -> dict:
 
 
 def _read_version_from_file(path: Path) -> Optional[str]:
+    """Read __version__ from a Python file via AST (Assign or AnnAssign)."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
@@ -79,10 +80,15 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]
-            if isinstance(target, ast.Name) and target.id == "__version__":
-                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                    return node.value.value
-                return None
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target = node.target
+        else:
+            continue
+        if isinstance(target, ast.Name) and target.id == "__version__":
+            val = node.value if isinstance(node, ast.AnnAssign) else node.value
+            if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                return val.value
+            return None
     return None
 
 
@@ -337,6 +343,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "pyproject.toml",
         "CMakeLists.txt",
         "conanfile.py",
+        "cmake",
         "src",
         "include",
         "README.md",
