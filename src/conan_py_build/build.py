@@ -72,33 +72,50 @@ def _get_project_metadata() -> dict:
 
 
 def _read_version_from_file(path: Path) -> Optional[str]:
-    """Read __version__ from a Python file via AST (Assign or AnnAssign)."""
+    """Read __version__ from a Python file (module-level string literal only)."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
         return None
-    for node in ast.walk(tree):
+    for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]
+            value = node.value
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
             target = node.target
+            value = node.value
         else:
             continue
         if isinstance(target, ast.Name) and target.id == "__version__":
-            val = node.value if isinstance(node, ast.AnnAssign) else node.value
-            if isinstance(val, ast.Constant) and isinstance(val.value, str):
-                return val.value
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                return value.value
             return None
     return None
 
 
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     version = project_metadata.get("version")
+    dynamic = project_metadata.get("dynamic")
+    version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
+
     if not version:
         tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
         version_file = tool.get("version-file")
         if version_file:
-            version = _read_version_from_file(source_dir / version_file)
+            resolved = (source_dir / version_file).resolve()
+            try:
+                resolved.relative_to(source_dir.resolve())
+            except ValueError:
+                raise RuntimeError(
+                    f"version-file must be inside project: {version_file!r}"
+                )
+            version = _read_version_from_file(resolved)
+        if version_is_dynamic and not version:
+            raise RuntimeError(
+                "dynamic = [\"version\"] but version could not be resolved. "
+                "Set [tool.conan-py-build] version-file to a file with __version__ = \"x.y.z\" at module level."
+            )
+
     version = version or "0.0.0"
     project_metadata["version"] = version
     return version
@@ -146,8 +163,9 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict):
     # StandardMetadata rejects project.version if project.dynamic contains
     # "version". We resolved it, so remove from dynamic.
     project = dict(metadata)
-    if "dynamic" in project and "version" in project["dynamic"]:
-        project["dynamic"] = [f for f in project["dynamic"] if f != "version"]
+    dynamic = project.get("dynamic")
+    if isinstance(dynamic, list) and "version" in dynamic:
+        project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=Path.cwd())
     with metadata_path.open("w", encoding="utf-8") as f:
