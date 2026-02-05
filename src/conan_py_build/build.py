@@ -1,3 +1,4 @@
+import ast
 import io
 import os
 import shutil
@@ -5,7 +6,7 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
@@ -70,6 +71,62 @@ def _get_project_metadata() -> dict:
     return pyproject.get("project", {})
 
 
+def _read_version_from_file(path: Path) -> Optional[str]:
+    """Read __version__ from a Python file (module-level string literal only)."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target = node.target
+            value = node.value
+        else:
+            continue
+        if isinstance(target, ast.Name) and target.id == "__version__":
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                return value.value
+            return None
+    return None
+
+
+def _get_version_from_config(source_dir: Path) -> Optional[str]:
+    """Read version from [tool.conan-py-build] version-file if set."""
+    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    version_file = tool.get("version-file")
+    if not version_file:
+        return None
+    resolved = (source_dir / version_file).resolve()
+    try:
+        resolved.relative_to(source_dir.resolve())
+    except ValueError:
+        raise RuntimeError(
+            f"version-file must be inside project: {version_file!r}"
+        )
+    return _read_version_from_file(resolved)
+
+
+def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
+    version = project_metadata.get("version")
+    dynamic = project_metadata.get("dynamic")
+    version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
+
+    if not version:
+        version = _get_version_from_config(source_dir)
+        if version_is_dynamic and not version:
+            raise RuntimeError(
+                "dynamic = [\"version\"] but version could not be resolved. "
+                "Set [tool.conan-py-build] version-file to a file with __version__ = \"x.y.z\" at module level."
+            )
+
+    version = version or "0.0.0"
+    project_metadata["version"] = version
+    return version
+
+
 def _normalize_name(name: str) -> str:
     canonical = canonicalize_name(name)
     return canonical.replace("-", "_")
@@ -108,10 +165,14 @@ def _build_directory(build_dir: Optional[str]):
 
 def _write_metadata_file(dist_info_dir: Path, metadata: dict):
     """Write the METADATA file to dist-info directory."""
-    # FIXME: Dynamic metadata (PEP 621) is not supported. Need to resolve dynamic
-    # fields (e.g., read __version__ from source code) before creating StandardMetadata.
     metadata_path = dist_info_dir / "METADATA"
-    pyproject = {"project": metadata}
+    # StandardMetadata rejects project.version if project.dynamic contains
+    # "version". We resolved it, so remove from dynamic.
+    project = dict(metadata)
+    dynamic = project.get("dynamic")
+    if isinstance(dynamic, list) and "version" in dynamic:
+        project["dynamic"] = [f for f in dynamic if f != "version"]
+    pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=Path.cwd())
     with metadata_path.open("w", encoding="utf-8") as f:
         f.write(str(std_metadata.as_rfc822()))
@@ -164,9 +225,8 @@ def build_wheel(
 
     source_dir = Path.cwd()
     project_metadata = _get_project_metadata()
-
+    version = _resolve_version(project_metadata, source_dir)
     name = _normalize_name(project_metadata.get("name", "unknown"))
-    version = project_metadata.get("version", "0.0.0")
 
     print(f"Building wheel for {name}...")
 
@@ -299,9 +359,8 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     source_dir = Path.cwd()
     project_metadata = _get_project_metadata()
-
+    version = _resolve_version(project_metadata, source_dir)
     name = project_metadata.get("name", "unknown")
-    version = project_metadata.get("version", "0.0.0")
     sdist_name = f"{name}-{version}"
     sdist_filename = f"{sdist_name}.tar.gz"
 
@@ -311,6 +370,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "pyproject.toml",
         "CMakeLists.txt",
         "conanfile.py",
+        "cmake",
         "src",
         "include",
         "README.md",
