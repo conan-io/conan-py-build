@@ -93,23 +93,29 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     return None
 
 
+def _get_version_from_config(source_dir: Path) -> Optional[str]:
+    """Read version from [tool.conan-py-build] version-file if set."""
+    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    version_file = tool.get("version-file")
+    if not version_file:
+        return None
+    resolved = (source_dir / version_file).resolve()
+    try:
+        resolved.relative_to(source_dir.resolve())
+    except ValueError:
+        raise RuntimeError(
+            f"version-file must be inside project: {version_file!r}"
+        )
+    return _read_version_from_file(resolved)
+
+
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     version = project_metadata.get("version")
     dynamic = project_metadata.get("dynamic")
     version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
 
     if not version:
-        tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
-        version_file = tool.get("version-file")
-        if version_file:
-            resolved = (source_dir / version_file).resolve()
-            try:
-                resolved.relative_to(source_dir.resolve())
-            except ValueError:
-                raise RuntimeError(
-                    f"version-file must be inside project: {version_file!r}"
-                )
-            version = _read_version_from_file(resolved)
+        version = _get_version_from_config(source_dir)
         if version_is_dynamic and not version:
             raise RuntimeError(
                 "dynamic = [\"version\"] but version could not be resolved. "
