@@ -6,11 +6,13 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
+from conan.errors import ConanException
+from conan.internal.api.detect.detect_api import detect_default_compiler
 from distlib.wheel import Wheel
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
@@ -254,7 +256,7 @@ def _do_build_wheel(
     config: dict,
 ) -> str:
     """Internal function that performs the actual wheel build."""
-    
+
     # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
     package_dir = base_dir / "package" / name
@@ -267,7 +269,6 @@ def _do_build_wheel(
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
-
     # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
     # directory
     api = ConanAPI()
@@ -279,15 +280,25 @@ def _do_build_wheel(
 
     # Auto-detect default profile if using defaults
     if host_profile == "default" or build_profile == "default":
-        print("Detecting default Conan profile...", flush=True)
-        api.command.run(["profile", "detect", "--force"])
+        # Check if default profile exists or create one if a compiler is detected
+        try:
+            api.profiles.get_default_host()
+            api.profiles.get_default_build()
+        except ConanException:
+            compiler, _, _ = detect_default_compiler()
+            if not compiler:
+                raise RuntimeError("No compiler was detected. Please read the Conan documentation at "
+                                   "https://docs.conan.io/2/reference/config_files/settings.html "
+                                   "to see all the compatible compilers")
+            print("Detecting default Conan profile...", flush=True)
+            api.command.run(["profile", "detect", "--force"])
 
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
         flush=True,
     )
     # -of staging_dir: conanfile.package_folder = staging_dir, so
-    # cmake.install() installs there. 
+    # cmake.install() installs there.
     # -c build_folder: build tree goes to
     # base_dir/build, not inside staging.
     try:
