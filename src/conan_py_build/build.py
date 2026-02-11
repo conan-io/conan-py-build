@@ -258,6 +258,36 @@ def build_wheel(
         )
 
 
+def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
+    source_resolved = source_dir.resolve()
+    package_dir = (source_dir / wheel_package).resolve()
+    if not package_dir.is_relative_to(source_resolved):
+        raise RuntimeError(
+            f"Package '{wheel_package}' must be inside source path '{source_dir}'."
+        )
+    if not package_dir.exists():
+        raise FileNotFoundError(
+            f"Package path does not exist: '{wheel_package}' (resolved:' {package_dir}')"
+        )
+    if not package_dir.is_dir():
+        raise RuntimeError(
+            f"Package must be a directory: '{wheel_package}'"
+        )
+    return package_dir
+
+
+def _get_wheel_packages(
+    source_dir: Path,
+    name: str
+) -> list[Path]:
+    """Internal function to collect all python packages that need to be included in the final wheel."""
+    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    wheel_packages = tool.get("wheel", {}).get("packages")
+    if wheel_packages and isinstance(wheel_packages, list):
+        return [_check_wheel_package_path(source_dir, p) for p in wheel_packages]
+    return [(source_dir / "src" / name).resolve()]
+
+
 def _do_build_wheel(
     source_dir: Path,
     base_dir: Path,
@@ -271,12 +301,15 @@ def _do_build_wheel(
     
     # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
-    package_dir = base_dir / "package" / name
-    package_dir.mkdir(parents=True, exist_ok=True)
-
-    src_python_dir = source_dir / "src" / name
-    if src_python_dir.exists():
-        shutil.copytree(src_python_dir, package_dir, dirs_exist_ok=True)
+    for python_package_dir in _get_wheel_packages(source_dir, name):
+        if python_package_dir.exists():
+            package_dir = base_dir / "package" / python_package_dir.name
+            package_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
+            # Ensure __init__.py exists
+            init_file = package_dir / "__init__.py"
+            if not init_file.exists():
+                init_file.write_text(f'"""Package {name}."""\n')
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
@@ -324,11 +357,6 @@ def _do_build_wheel(
         raise RuntimeError(f"Conan build failed: {e}") from e
 
     deps_graph = result.get("graph")
-
-    # Ensure __init__.py exists
-    init_file = package_dir / "__init__.py"
-    if not init_file.exists():
-        init_file.write_text(f'"""Package {name}."""\n')
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata)

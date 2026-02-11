@@ -11,7 +11,10 @@ description = "A simple Python package with C++ code (pybind11) that adds two nu
 requires-python = ">=3.8"
 
 [tool.conan-py-build]
-version-file = "src/myadder_pybind11/__init__.py"
+version-file = "python/myadder_pybind11/__init__.py"
+
+[tool.conan-py-build.wheel]
+packages = ["python/myadder_pybind11"]
 
 [tool.conan-py-build.sdist]
 # Drop README from the sdist

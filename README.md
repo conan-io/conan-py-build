@@ -79,6 +79,24 @@ There is limited support for dynamic version: set `dynamic = ["version"]` in
 `[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
 backend reads `__version__ = "x.y.z"` from that file.
 
+### Wheel packages
+
+You can control which Python packages are included in the wheel via
+`[tool.conan-py-build].wheel` in `pyproject.toml`:
+
+- **`wheel.packages`**: list of paths (relative to the project root) that are
+  Python packages to include in the wheel. Each path must be a directory inside
+  the project.
+
+If `wheel.packages` is not set, the backend includes a single package at
+`src/<normalized_project_name>` (e.g. `src/mypackage` for a project named
+`mypackage`).
+
+```toml
+[tool.conan-py-build.wheel]
+packages = ["src/mypackage", "src/other_package"]
+```
+
 ### Sdist include / exclude
 
 You can control what goes into the source distribution (sdist) via
