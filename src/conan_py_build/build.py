@@ -281,6 +281,10 @@ def _do_build_wheel(
             package_dir = base_dir / "package" / python_package_dir.name
             package_dir.mkdir(parents=True, exist_ok=True)
             shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
+            # Ensure __init__.py exists
+            init_file = package_dir / "__init__.py"
+            if not init_file.exists():
+                init_file.write_text(f'"""Package {name}."""\n')
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
@@ -328,11 +332,6 @@ def _do_build_wheel(
         raise RuntimeError(f"Conan build failed: {e}") from e
 
     deps_graph = result.get("graph")
-
-    # Ensure __init__.py exists
-    init_file = package_dir / "__init__.py"
-    if not init_file.exists():
-        init_file.write_text(f'"""Package {name}."""\n')
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata)
