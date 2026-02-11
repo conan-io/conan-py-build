@@ -247,22 +247,16 @@ def build_wheel(
 def _get_wheel_packages(
     source_dir: Path,
     name: str
-) -> list[str, str]:
+) -> list[Path]:
     tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
-    wheel_packages = tool.get("wheel", {}).get("packages")
-    # Default python package path
-    packages = [(name, source_dir / "src" / name)]
-    # Use the packages defined in pyproyect.
-    # The package path is composed of the source_dir and the package name.
-    # Support needs to be added for:
-    # - absolute paths.
-    # - relative paths to the source_dir.
+    wheel_packages = tool.get("wheel", {}).get("packages", [f"src/{name}"])
     if wheel_packages and isinstance(wheel_packages, list):
-        packages = []
-        for package in wheel_packages:
-            package_dir = source_dir / package
-        packages.append([package_dir.name, source_dir / package])
-    return packages
+        def _check_package_path(wheel_package: str):
+            package_dir = (source_dir / wheel_package).resolve()
+            if not package_dir.is_relative_to(source_dir):
+                raise RuntimeError(f"Package '{wheel_package}' must be inside source path '{source_dir}'.")
+            return package_dir
+        return [_check_package_path(p) for p in wheel_packages]
 
 
 def _do_build_wheel(
@@ -278,11 +272,11 @@ def _do_build_wheel(
     
     # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
-    for package_name, python_src_dir in _get_wheel_packages(source_dir, name):
-        if python_src_dir.exists():
-            package_dir = base_dir / "package" / package_name
+    for python_package_dir in _get_wheel_packages(source_dir, name):
+        if python_package_dir.exists():
+            package_dir = base_dir / "package" / python_package_dir.name
             package_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(python_src_dir, package_dir, dirs_exist_ok=True)
+            shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
