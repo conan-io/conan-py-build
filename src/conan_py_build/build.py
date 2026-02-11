@@ -67,8 +67,12 @@ def _read_pyproject() -> dict:
 
 def _get_project_metadata() -> dict:
     """Extract project metadata from pyproject.toml."""
-    pyproject = _read_pyproject()
-    return pyproject.get("project", {})
+    return _read_pyproject().get("project", {})
+
+
+def _get_tool_config() -> dict:
+    """Read [tool.conan-py-build] from pyproject.toml."""
+    return _read_pyproject().get("tool", {}).get("conan-py-build", {})
 
 
 def _read_version_from_file(path: Path) -> Optional[str]:
@@ -95,7 +99,7 @@ def _read_version_from_file(path: Path) -> Optional[str]:
 
 def _get_sdist_config() -> dict:
     """Read [tool.conan-py-build].sdist (merged with defaults)."""
-    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    tool = _get_tool_config()
     sdist = tool.get("sdist", {})
     if not isinstance(sdist, dict):
         return {"include": [], "exclude": []}
@@ -109,7 +113,7 @@ def _get_sdist_config() -> dict:
 
 def _get_version_from_config(source_dir: Path) -> Optional[str]:
     """Read version from [tool.conan-py-build] version-file if set."""
-    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    tool = _get_tool_config()
     version_file = tool.get("version-file")
     if not version_file:
         return None
@@ -265,13 +269,13 @@ def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
         raise RuntimeError(
             f"Package '{wheel_package}' must be inside source path '{source_dir}'."
         )
-    if not package_dir.exists():
-        raise FileNotFoundError(
-            f"Package path does not exist: '{wheel_package}' (resolved:' {package_dir}')"
-        )
     if not package_dir.is_dir():
-        raise RuntimeError(
-            f"Package must be a directory: '{wheel_package}'"
+        raise FileNotFoundError(
+            f"Package path does not exist or is not a directory: '{wheel_package}' (resolved: {package_dir})"
+        )
+    if not (package_dir / "__init__.py").is_file():
+        raise FileNotFoundError(
+            f"Python package must contain __init__.py: '{wheel_package}' (resolved: {package_dir})"
         )
     return package_dir
 
@@ -306,10 +310,6 @@ def _do_build_wheel(
             package_dir = base_dir / "package" / python_package_dir.name
             package_dir.mkdir(parents=True, exist_ok=True)
             shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
-            # Ensure __init__.py exists
-            init_file = package_dir / "__init__.py"
-            if not init_file.exists():
-                init_file.write_text(f'"""Package {name}."""\n')
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json

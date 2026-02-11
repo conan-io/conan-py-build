@@ -80,6 +80,7 @@ jobs:
           pip install examples/basic/dist/myadder-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl
           python -c "import myadder; assert myadder.add(2, 3) == 5; assert myadder.add_integers(10, 20) == 30; print('myadder OK')"
           python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; assert myadder_pybind11.add_integers(10, 20) == 30; assert myadder_pybind11.greet('World').startswith('Hello'); print('myadder_pybind11 OK')"
+          python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
         shell: bash
       - name: Upload wheels
         uses: actions/upload-artifact@v4
