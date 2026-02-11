@@ -244,10 +244,21 @@ def build_wheel(
         )
 
 
-def _check_wheel_package_path(source_dir: Path, wheel_package: str):
+def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
+    source_resolved = source_dir.resolve()
     package_dir = (source_dir / wheel_package).resolve()
-    if not package_dir.is_relative_to(source_dir):
-        raise RuntimeError(f"Package '{wheel_package}' must be inside source path '{source_dir}'.")
+    if not package_dir.is_relative_to(source_resolved):
+        raise RuntimeError(
+            f"Package '{wheel_package}' must be inside source path '{source_dir}'."
+        )
+    if not package_dir.exists():
+        raise FileNotFoundError(
+            f"Package path does not exist: '{wheel_package}' (resolved:' {package_dir}')"
+        )
+    if not package_dir.is_dir():
+        raise RuntimeError(
+            f"Package must be a directory: '{wheel_package}'"
+        )
     return package_dir
 
 
