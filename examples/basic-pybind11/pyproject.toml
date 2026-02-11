@@ -12,3 +12,7 @@ requires-python = ">=3.8"
 
 [tool.conan-py-build]
 version-file = "src/myadder_pybind11/__init__.py"
+
+[tool.conan-py-build.sdist]
+# Drop README from the sdist
+exclude = ["README.md"]
