@@ -79,6 +79,26 @@ There is limited support for dynamic version: set `dynamic = ["version"]` in
 `[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
 backend reads `__version__ = "x.y.z"` from that file.
 
+### Sdist include / exclude
+
+You can control what goes into the source distribution (sdist) via
+`[tool.conan-py-build].sdist` in `pyproject.toml`:
+
+- **`sdist.include`**: paths to add to the sdist (e.g. files in default exclude
+  like `build/`, or extra dirs like `["docs/"]`).
+- **`sdist.exclude`**: paths or patterns to remove from the sdist (e.g. default
+  includes you don't want, like `["README.md"]`, or `["tests"]`).
+
+By default the sdist includes `pyproject.toml`, `CMakeLists.txt`, `conanfile.py`,
+`cmake/`, `src/`, `include/`, README and LICENSE, and excludes `__pycache__`,
+`*.pyc`, `.git`, `build`, `dist` and the like.
+
+```toml
+[tool.conan-py-build.sdist]
+include = ["docs/", "misc/"]
+exclude = [".github", "scripts", "README.md"]
+```
+
 ### Profiles
 
 Jinja profiles in `examples/profiles/`: `include(default)` + wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version (e.g. `3.12.12`).

@@ -93,6 +93,20 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     return None
 
 
+def _get_sdist_config() -> dict:
+    """Read [tool.conan-py-build].sdist (merged with defaults)."""
+    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    sdist = tool.get("sdist", {})
+    if not isinstance(sdist, dict):
+        return {"include": [], "exclude": []}
+    include = sdist.get("include", [])
+    exclude = sdist.get("exclude", [])
+    return {
+        "include": include if isinstance(include, list) else [],
+        "exclude": exclude if isinstance(exclude, list) else [],
+    }
+
+
 def _get_version_from_config(source_dir: Path) -> Optional[str]:
     """Read version from [tool.conan-py-build] version-file if set."""
     tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
@@ -366,7 +380,8 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     print(f"Building sdist: {sdist_filename}")
 
-    include_patterns = [
+    sdist_config = _get_sdist_config()
+    default_include = [
         "pyproject.toml",
         "CMakeLists.txt",
         "conanfile.py",
@@ -377,8 +392,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "README.rst",
         "LICENSE",
     ]
-
-    exclude_patterns = [
+    default_exclude = [
         "__pycache__",
         "*.pyc",
         "*.pyo",
@@ -389,14 +403,21 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "*.egg-info",
         ".eggs",
     ]
+    include_patterns = default_include + sdist_config["include"]
+    exclude_patterns = default_exclude + sdist_config["exclude"]
 
     def should_exclude(path: Path) -> bool:
+        try:
+            rel = path.relative_to(source_dir)
+        except ValueError:
+            rel = path
         name = path.name
+        parts = rel.parts
         for pattern in exclude_patterns:
             if pattern.startswith("*"):
                 if name.endswith(pattern[1:]):
                     return True
-            elif name == pattern:
+            elif name == pattern or pattern in parts:
                 return True
         return False
 
