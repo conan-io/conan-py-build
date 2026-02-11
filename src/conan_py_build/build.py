@@ -244,19 +244,23 @@ def build_wheel(
         )
 
 
+def _check_wheel_package_path(source_dir: Path, wheel_package: str):
+    package_dir = (source_dir / wheel_package).resolve()
+    if not package_dir.is_relative_to(source_dir):
+        raise RuntimeError(f"Package '{wheel_package}' must be inside source path '{source_dir}'.")
+    return package_dir
+
+
 def _get_wheel_packages(
     source_dir: Path,
     name: str
 ) -> list[Path]:
+    """Internal function to collect all python packages that need to be included in the final wheel."""
     tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
-    wheel_packages = tool.get("wheel", {}).get("packages", [f"src/{name}"])
+    wheel_packages = tool.get("wheel", {}).get("packages")
     if wheel_packages and isinstance(wheel_packages, list):
-        def _check_package_path(wheel_package: str):
-            package_dir = (source_dir / wheel_package).resolve()
-            if not package_dir.is_relative_to(source_dir):
-                raise RuntimeError(f"Package '{wheel_package}' must be inside source path '{source_dir}'.")
-            return package_dir
-        return [_check_package_path(p) for p in wheel_packages]
+        return [_check_wheel_package_path(source_dir, p) for p in wheel_packages]
+    return [(source_dir / "src" / name).resolve()]
 
 
 def _do_build_wheel(
