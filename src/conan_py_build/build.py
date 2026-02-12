@@ -1,6 +1,5 @@
 import ast
 import io
-import logging
 import os
 import shutil
 import tarfile
@@ -44,7 +43,7 @@ def _get_wheel_tags() -> dict:
             "abi": [os.environ.get("WHEEL_ABI", "none")],
             "arch": [wheel_arch],
         }
-        logging.debug("Using wheel tags from environment: %s", tags)
+        print(f"  Using wheel tags from environment: {tags}")
         return tags
 
     # Default: auto-detect from current platform
@@ -176,7 +175,7 @@ def _build_directory(build_dir: Optional[str]):
     if build_dir:
         path = Path(build_dir)
         path.mkdir(parents=True, exist_ok=True)
-        logging.debug("Using persistent build directory: %s", path)
+        print(f"Using persistent build directory: {path}")
         yield path
     else:
         with tempfile.TemporaryDirectory() as tmp_dir:
