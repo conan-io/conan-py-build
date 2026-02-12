@@ -6,7 +6,7 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import List, Optional
 
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
@@ -55,24 +55,24 @@ def _get_wheel_tags() -> dict:
     }
 
 
-def _read_pyproject() -> dict:
-    """Read and parse pyproject.toml from current directory."""
-    pyproject_path = Path("pyproject.toml")
+def _read_pyproject(project_dir: Path) -> dict:
+    """Read and parse pyproject.toml from project_dir."""
+    pyproject_path = project_dir / "pyproject.toml"
     if not pyproject_path.exists():
-        raise FileNotFoundError("pyproject.toml not found in current directory")
+        raise FileNotFoundError(f"pyproject.toml not found in {project_dir}")
 
     with open(pyproject_path, "rb") as f:
         return tomllib.load(f)
 
 
-def _get_project_metadata() -> dict:
+def _get_project_metadata(project_dir: Path) -> dict:
     """Extract project metadata from pyproject.toml."""
-    return _read_pyproject().get("project", {})
+    return _read_pyproject(project_dir).get("project", {})
 
 
-def _get_tool_config() -> dict:
+def _get_tool_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build] from pyproject.toml."""
-    return _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    return _read_pyproject(project_dir).get("tool", {}).get("conan-py-build", {})
 
 
 def _read_version_from_file(path: Path) -> Optional[str]:
@@ -97,9 +97,9 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     return None
 
 
-def _get_sdist_config() -> dict:
+def _get_sdist_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build].sdist (merged with defaults)."""
-    tool = _get_tool_config()
+    tool = _get_tool_config(project_dir)
     sdist = tool.get("sdist", {})
     if not isinstance(sdist, dict):
         return {"include": [], "exclude": []}
@@ -112,8 +112,8 @@ def _get_sdist_config() -> dict:
 
 
 def _get_version_from_config(source_dir: Path) -> Optional[str]:
-    """Read version from [tool.conan-py-build] version-file if set."""
-    tool = _get_tool_config()
+    """Read version from [tool.conan-py-build] version-file if set. Reads pyproject from source_dir."""
+    tool = _get_tool_config(source_dir)
     version_file = tool.get("version-file")
     if not version_file:
         return None
@@ -181,8 +181,10 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _write_metadata_file(dist_info_dir: Path, metadata: dict):
-    """Write the METADATA file to dist-info directory."""
+def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
+    """Write the METADATA file to dist-info directory.
+    project_dir is used to resolve readme/license/dynamic paths.
+    """
     metadata_path = dist_info_dir / "METADATA"
     # StandardMetadata rejects project.version if project.dynamic contains
     # "version". We resolved it, so remove from dynamic.
@@ -191,12 +193,12 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict):
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
-    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=Path.cwd())
+    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
     with metadata_path.open("w", encoding="utf-8") as f:
         f.write(str(std_metadata.as_rfc822()))
 
 
-def _create_dist_info(staging_dir: Path, metadata: dict) -> Path:
+def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
     """Create .dist-info directory with metadata files."""
     name = _normalize_name(metadata.get("name", "unknown"))
     version = metadata.get("version", "0.0.0")
@@ -204,7 +206,7 @@ def _create_dist_info(staging_dir: Path, metadata: dict) -> Path:
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    _write_metadata_file(dist_info_dir, metadata)
+    _write_metadata_file(dist_info_dir, metadata, project_dir)
 
     return dist_info_dir
 
@@ -242,7 +244,7 @@ def build_wheel(
     wheel_dir.mkdir(parents=True, exist_ok=True)
 
     source_dir = Path.cwd()
-    project_metadata = _get_project_metadata()
+    project_metadata = _get_project_metadata(source_dir)
     version = _resolve_version(project_metadata, source_dir)
     name = _normalize_name(project_metadata.get("name", "unknown"))
 
@@ -265,7 +267,9 @@ def build_wheel(
 def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
     source_resolved = source_dir.resolve()
     package_dir = (source_dir / wheel_package).resolve()
-    if not package_dir.is_relative_to(source_resolved):
+    try:
+        package_dir.relative_to(source_resolved)
+    except ValueError:
         raise RuntimeError(
             f"Package '{wheel_package}' must be inside source path '{source_dir}'."
         )
@@ -283,13 +287,14 @@ def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
 def _get_wheel_packages(
     source_dir: Path,
     name: str
-) -> list[Path]:
+) -> List[Path]:
     """Internal function to collect all python packages that need to be included in the final wheel."""
-    tool = _read_pyproject().get("tool", {}).get("conan-py-build", {})
+    tool = _get_tool_config(source_dir)
     wheel_packages = tool.get("wheel", {}).get("packages")
     if wheel_packages and isinstance(wheel_packages, list):
         return [_check_wheel_package_path(source_dir, p) for p in wheel_packages]
-    return [(source_dir / "src" / name).resolve()]
+    # Default: src/<name>; validate like explicit packages (must exist and have __init__.py).
+    return [_check_wheel_package_path(source_dir, f"src/{name}")]
 
 
 def _do_build_wheel(
@@ -306,10 +311,9 @@ def _do_build_wheel(
     # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
     for python_package_dir in _get_wheel_packages(source_dir, name):
-        if python_package_dir.exists():
-            package_dir = base_dir / "package" / python_package_dir.name
-            package_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
+        package_dir = base_dir / "package" / python_package_dir.name
+        package_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
@@ -359,7 +363,7 @@ def _do_build_wheel(
     deps_graph = result.get("graph")
 
     # Create dist-info
-    _create_dist_info(staging_dir, project_metadata)
+    _create_dist_info(staging_dir, project_metadata, source_dir)
 
     # Build wheel using distlib. Apply Conan's buildenv to get cross-compile
     # wheel tags from [buildenv]
@@ -400,7 +404,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     sdist_dir.mkdir(parents=True, exist_ok=True)
 
     source_dir = Path.cwd()
-    project_metadata = _get_project_metadata()
+    project_metadata = _get_project_metadata(source_dir)
     version = _resolve_version(project_metadata, source_dir)
     name = project_metadata.get("name", "unknown")
     sdist_name = f"{name}-{version}"
@@ -408,7 +412,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     print(f"Building sdist: {sdist_filename}")
 
-    sdist_config = _get_sdist_config()
+    sdist_config = _get_sdist_config(source_dir)
     default_include = [
         "pyproject.toml",
         "CMakeLists.txt",
@@ -456,13 +460,13 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
             source_path = source_dir / pattern
             if source_path.exists():
                 if source_path.is_file():
-                    arcname = f"{sdist_name}/{pattern}"
+                    arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
                     tar.add(source_path, arcname=arcname)
                 elif source_path.is_dir():
                     for file_path in source_path.rglob("*"):
                         if file_path.is_file() and not should_exclude(file_path):
                             rel_path = file_path.relative_to(source_dir)
-                            arcname = f"{sdist_name}/{rel_path}"
+                            arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
         pkg_info_lines = [
