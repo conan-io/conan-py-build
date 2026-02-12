@@ -1,6 +1,5 @@
-"""Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout.
-
-Requires Conan to be installed (e.g. pip install conan) and a detected profile.
+"""
+Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout.
 """
 import tarfile
 import types
