@@ -55,23 +55,22 @@ def _get_wheel_tags() -> dict:
     }
 
 
-def _read_pyproject(project_dir: Optional[Path] = None) -> dict:
-    """Read and parse pyproject.toml. If project_dir is None, use current directory."""
-    base = project_dir if project_dir is not None else Path.cwd()
-    pyproject_path = base / "pyproject.toml"
+def _read_pyproject(project_dir: Path) -> dict:
+    """Read and parse pyproject.toml from project_dir."""
+    pyproject_path = project_dir / "pyproject.toml"
     if not pyproject_path.exists():
-        raise FileNotFoundError(f"pyproject.toml not found in {base}")
+        raise FileNotFoundError(f"pyproject.toml not found in {project_dir}")
 
     with open(pyproject_path, "rb") as f:
         return tomllib.load(f)
 
 
-def _get_project_metadata(project_dir: Optional[Path] = None) -> dict:
+def _get_project_metadata(project_dir: Path) -> dict:
     """Extract project metadata from pyproject.toml."""
     return _read_pyproject(project_dir).get("project", {})
 
 
-def _get_tool_config(project_dir: Optional[Path] = None) -> dict:
+def _get_tool_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build] from pyproject.toml."""
     return _read_pyproject(project_dir).get("tool", {}).get("conan-py-build", {})
 
@@ -98,7 +97,7 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     return None
 
 
-def _get_sdist_config(project_dir: Optional[Path] = None) -> dict:
+def _get_sdist_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build].sdist (merged with defaults)."""
     tool = _get_tool_config(project_dir)
     sdist = tool.get("sdist", {})
@@ -182,11 +181,9 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _write_metadata_file(
-    dist_info_dir: Path, metadata: dict, project_dir: Optional[Path] = None
-):
+def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
     """Write the METADATA file to dist-info directory.
-    project_dir is used to resolve readme/license/dynamic paths; defaults to CWD.
+    project_dir is used to resolve readme/license/dynamic paths.
     """
     metadata_path = dist_info_dir / "METADATA"
     # StandardMetadata rejects project.version if project.dynamic contains
@@ -196,15 +193,12 @@ def _write_metadata_file(
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
-    base = project_dir if project_dir is not None else Path.cwd()
-    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=base)
+    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
     with metadata_path.open("w", encoding="utf-8") as f:
         f.write(str(std_metadata.as_rfc822()))
 
 
-def _create_dist_info(
-    staging_dir: Path, metadata: dict, project_dir: Optional[Path] = None
-) -> Path:
+def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
     """Create .dist-info directory with metadata files."""
     name = _normalize_name(metadata.get("name", "unknown"))
     version = metadata.get("version", "0.0.0")
@@ -212,7 +206,7 @@ def _create_dist_info(
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    _write_metadata_file(dist_info_dir, metadata, project_dir=project_dir)
+    _write_metadata_file(dist_info_dir, metadata, project_dir)
 
     return dist_info_dir
 
