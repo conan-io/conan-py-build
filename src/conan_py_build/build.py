@@ -363,7 +363,7 @@ def _do_build_wheel(
     deps_graph = result.get("graph")
 
     # Create dist-info
-    _create_dist_info(staging_dir, project_metadata, project_dir=source_dir)
+    _create_dist_info(staging_dir, project_metadata, source_dir)
 
     # Build wheel using distlib. Apply Conan's buildenv to get cross-compile
     # wheel tags from [buildenv]
