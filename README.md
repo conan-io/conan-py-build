@@ -20,9 +20,7 @@ pip install -e .
 
 ```toml
 [build-system]
-# TODO: Change to requires = ["conan-py-build"] once published to PyPI
-# For now, install manually: pip install -e .
-requires = []
+requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 
 [project]
@@ -56,8 +54,7 @@ class MyPackageConan(ConanFile):
 3. Build the wheel:
 
 ```bash
-# --no-build-isolation is only needed to test while conan-py-build is not published to PyPI
-pip wheel . --no-build-isolation -w dist/ -vvv
+pip wheel . -w dist/ -vvv
 ```
 
 For a complete basic working example, see the [basic example](examples/basic/).
@@ -140,10 +137,27 @@ See the [examples/](examples/) directory for complete working examples:
 
 ## Development
 
-Install in editable mode with dev dependencies (pytest), then run the test suite:
+To try changes against a project that uses this backend (e.g. one of the
+examples), install the backend in editable mode and build with no isolation so
+it uses your local copy:
+
+```bash
+pip install -e .   # from the conan-py-build repo root
+cd examples/basic  # or your own project
+pip wheel . --no-build-isolation -w dist/
+```
+
+## Running tests
+
+Install the build backend in editable mode with dev dependencies:
 
 ```bash
 pip install -e ".[dev]"
+```
+
+Run the test suite:
+
+```bash
 pytest tests/ -v
 ```
 
