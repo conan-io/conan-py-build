@@ -104,15 +104,13 @@ def test_resolve_version_from_metadata():
     assert _resolve_version(meta, Path("/any")) == "1.0.0"
 
 
-def test_resolve_version_missing_falls_back_to_0_0_0(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_resolve_version_missing_falls_back_to_0_0_0(tmp_path):
     make_pyproject_minimal(tmp_path)
     meta = {"name": "pkg"}
     assert _resolve_version(meta, tmp_path) == "0.0.0"
 
 
-def test_resolve_version_dynamic_without_version_file_raises(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_resolve_version_dynamic_without_version_file_raises(tmp_path):
     (tmp_path / "pyproject.toml").write_text("""[project]
 name = "pkg"
 dynamic = ["version"]
@@ -127,15 +125,13 @@ build-backend = "conan_py_build.build"
         _resolve_version(meta, tmp_path)
 
 
-def test_get_sdist_config_minimal_pyproject(tmp_path, monkeypatch):
+def test_get_sdist_config_minimal_pyproject(tmp_path):
     make_pyproject_minimal(tmp_path)
-    monkeypatch.chdir(tmp_path)
     assert _get_sdist_config(tmp_path) == {"include": [], "exclude": []}
 
 
-def test_get_sdist_config_tool_include_exclude(tmp_path, monkeypatch):
+def test_get_sdist_config_tool_include_exclude(tmp_path):
     make_pyproject_with_tool_config(tmp_path)
-    monkeypatch.chdir(tmp_path)
     assert _get_sdist_config(tmp_path) == {"include": ["docs"], "exclude": ["README.md"]}
 
 
@@ -173,24 +169,21 @@ def test_check_wheel_package_path_no_init_raises(tmp_path):
         _check_wheel_package_path(tmp_path, "src/nopkg")
 
 
-def test_get_wheel_packages_default_src_name(tmp_path, monkeypatch):
+def test_get_wheel_packages_default_src_name(tmp_path):
     make_pyproject_minimal(tmp_path)
-    monkeypatch.chdir(tmp_path)
     (tmp_path / "src" / "test_pkg").mkdir(parents=True)
     (tmp_path / "src" / "test_pkg" / "__init__.py").write_text("")
     assert [p.name for p in _get_wheel_packages(tmp_path, "test_pkg")] == ["test_pkg"]
 
 
-def test_get_wheel_packages_default_missing_raises(tmp_path, monkeypatch):
+def test_get_wheel_packages_default_missing_raises(tmp_path):
     make_pyproject_minimal(tmp_path)
-    monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError, match="does not exist|__init__.py"):
         _get_wheel_packages(tmp_path, "test_pkg")
 
 
-def test_get_wheel_packages_from_tool_config(tmp_path, monkeypatch):
+def test_get_wheel_packages_from_tool_config(tmp_path):
     make_pyproject_with_tool_config(tmp_path)
-    monkeypatch.chdir(tmp_path)
     (tmp_path / "src" / "extra_utils").mkdir(parents=True)
     (tmp_path / "src" / "extra_utils" / "__init__.py").write_text("")
     assert {p.name for p in _get_wheel_packages(tmp_path, "myadder-pybind11")} == {"myadder", "extra_utils"}

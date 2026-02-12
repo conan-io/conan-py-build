@@ -1,6 +1,4 @@
-"""
-Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout.
-"""
+"""Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
 import tarfile
 import types
 from pathlib import Path
@@ -87,4 +85,4 @@ def test_build_wheel_integration(integration_project):
     wheel_dir.mkdir()
     name = build_wheel(str(wheel_dir), config_settings=None)
     assert name.endswith(".whl")
-    assert (Path(wheel_dir) / name).is_file()
+    assert (wheel_dir / name).is_file()
