@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types: [prereleased, released]
+
+jobs:
+  test:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  publish-to-pypitest:
+    name: Publish Development Build to TestPyPI
+    if: github.event_name != 'release' && github.ref == 'refs/heads/main'
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: test-pypi-release
+      url: https://test.pypi.org/project/conan-py-build/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build
+
+      - name: Add unique dev version (epoch)
+        run: |
+          TS=$(date -u +%s)
+          sed -E -i 's/^(version = "[0-9]+\.[0-9]+\.[0-9]+)(\.dev[0-9]+)?"/\1.dev'"$TS"'"/' pyproject.toml
+
+      - name: Build the package
+        run: python -m build
+
+      - name: Publish package to TestPyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  releaseDraft:
+    name: Create Release Draft
+    if: github.event_name != 'release' && github.ref == 'refs/heads/main'
+    needs: [test, publish-to-pypitest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from pyproject.toml
+        id: get_version
+        run: |
+          VERSION=$(grep -E '^version = ' pyproject.toml | sed -E 's/^version = "([^"]+)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+
+      - name: Remove Old Release Drafts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DRAFT_IDS=$(gh api repos/${{ github.repository }}/releases --jq '.[] | select(.draft == true) | .id')
+          if [[ -n "$DRAFT_IDS" ]]; then
+            echo "Deleting old drafts..."
+            echo "$DRAFT_IDS" | xargs -I '{}' gh api -X DELETE repos/${{ github.repository }}/releases/'{}'
+          else
+            echo "No old drafts found. Skipping delete step."
+          fi
+
+      - name: Create Release Draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ env.VERSION }}" --draft --title "v${{ env.VERSION }}" --generate-notes
+
+  publish-to-pypi:
+    name: Build and Publish to PyPI
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: pypi-release
+      url: https://pypi.org/project/conan-py-build/
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip build
+
+      - name: Build the package
+        run: python -m build
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
