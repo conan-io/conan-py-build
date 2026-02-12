@@ -1,4 +1,4 @@
-name: Build wheels
+name: Test and build wheels
 
 on:
   push:
@@ -8,6 +8,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.14"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install and run tests
+        run: |
+          pip install -e ".[dev]"
+          pytest tests/ -v
+
   build-with-profile:
     strategy:
       fail-fast: false

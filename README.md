@@ -138,6 +138,15 @@ See the [examples/](examples/) directory for complete working examples:
 - **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
 - **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11 (with dynamic version from `__init__.py`)
 
+## Development
+
+Install in editable mode with dev dependencies (pytest), then run the test suite:
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -v
+```
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
