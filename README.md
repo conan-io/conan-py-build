@@ -137,7 +137,19 @@ See the [examples/](examples/) directory for complete working examples:
 
 ## Development
 
-Install the build backend in editable mode with dev dependencies (pytest, build):
+To try changes against a project that uses this backend (e.g. one of the
+examples), install the backend in editable mode and build with no isolation so
+it uses your local copy:
+
+```bash
+pip install -e .   # from the conan-py-build repo root
+cd examples/basic  # or your own project
+pip wheel . --no-build-isolation -w dist/
+```
+
+## Running tests
+
+Install the build backend in editable mode with dev dependencies:
 
 ```bash
 pip install -e ".[dev]"
@@ -147,14 +159,6 @@ Run the test suite:
 
 ```bash
 pytest tests/ -v
-```
-
-To try changes against a project that uses this backend (e.g. one of the examples), install the backend in editable mode and build with no isolation so it uses your local copy:
-
-```bash
-pip install -e .   # from the conan-py-build repo root
-cd examples/basic  # or your own project
-pip wheel . --no-build-isolation -w dist/
 ```
 
 ## License
