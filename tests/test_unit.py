@@ -71,28 +71,16 @@ def test_parse_config_custom_profiles_and_build_dir():
     assert cfg == {"host_profile": "linux", "build_profile": "macos", "build_dir": "/tmp/build"}
 
 
-def test_read_version_from_file_simple_string_literal(tmp_path):
+@pytest.mark.parametrize("content,expected", [
+    ('__version__ = "2.0.0"', "2.0.0"),
+    ('__version__: str = "3.1.4"', "3.1.4"),
+    ("x = 1\ny = 2", None),
+    ("__version__ = 1", None),
+])
+def test_read_version_from_file(tmp_path, content, expected):
     f = tmp_path / "version.py"
-    f.write_text('__version__ = "2.0.0"', encoding="utf-8")
-    assert _read_version_from_file(f) == "2.0.0"
-
-
-def test_read_version_from_file_annotated_assign(tmp_path):
-    f = tmp_path / "version.py"
-    f.write_text('__version__: str = "3.1.4"', encoding="utf-8")
-    assert _read_version_from_file(f) == "3.1.4"
-
-
-def test_read_version_from_file_no_version_returns_none(tmp_path):
-    f = tmp_path / "module.py"
-    f.write_text("x = 1\ny = 2", encoding="utf-8")
-    assert _read_version_from_file(f) is None
-
-
-def test_read_version_from_file_not_string_literal_returns_none(tmp_path):
-    f = tmp_path / "version.py"
-    f.write_text("__version__ = 1", encoding="utf-8")
-    assert _read_version_from_file(f) is None
+    f.write_text(content, encoding="utf-8")
+    assert _read_version_from_file(f) == expected
 
 
 def test_read_version_from_file_missing_returns_none(tmp_path):
