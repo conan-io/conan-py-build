@@ -1,4 +1,4 @@
-name: CI
+name: Test and build wheels
 
 on:
   push:
