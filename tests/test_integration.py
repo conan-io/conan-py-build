@@ -1,0 +1,91 @@
+"""Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout.
+
+Requires Conan to be installed (e.g. pip install conan) and a detected profile.
+"""
+import tarfile
+import types
+from pathlib import Path
+
+import pytest
+
+from conan_py_build.build import build_sdist, build_wheel
+
+
+def make_integration_project(path: Path) -> None:
+    """Create a minimal conan-py-build project"""
+
+    (path / "pyproject.toml").write_text("""[project]
+name = "integration-pkg"
+version = "0.1.0"
+description = "For integration tests"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+""", encoding="utf-8")
+
+    (path / "conanfile.py").write_text("""from conan import ConanFile
+from conan.tools.cmake import cmake_layout
+
+
+class Pkg(ConanFile):
+    settings = "os", "compiler", "build_type", "arch"
+    generators = "CMakeToolchain", "CMakeDeps"
+
+    def layout(self):
+        cmake_layout(self)
+
+    def build(self):
+        pass
+""", encoding="utf-8")
+
+    (path / "CMakeLists.txt").write_text("""cmake_minimum_required(VERSION 3.15)
+project(integration_pkg)
+""", encoding="utf-8")
+
+    (path / "src" / "integration_pkg" / "__init__.py").parent.mkdir(parents=True)
+
+    (path / "src" / "integration_pkg" / "__init__.py").write_text("", encoding="utf-8")
+
+
+@pytest.fixture
+def integration_project(tmp_path, monkeypatch):
+    """Create a minimal project in tmp_path and chdir into it."""
+    dest = tmp_path / "proj"
+    dest.mkdir()
+    make_integration_project(dest)
+    monkeypatch.chdir(dest)
+    conan_home = tmp_path / "conan_home"
+    monkeypatch.setenv("CONAN_HOME", str(conan_home))
+    return types.SimpleNamespace(work_dir=tmp_path)
+
+
+def test_build_sdist_produces_tarball(integration_project):
+    """Integration: build_sdist on a real project layout produces a valid sdist tarball."""
+    sdist_dir = integration_project.work_dir / "dist"
+    sdist_dir.mkdir()
+    filename = build_sdist(str(sdist_dir), config_settings=None)
+
+    assert filename == "integration-pkg-0.1.0.tar.gz"
+    tarball = sdist_dir / filename
+    assert tarball.is_file()
+
+    with tarfile.open(tarball, "r:gz") as tar:
+        names = sorted(tar.getnames())
+    expected = sorted([
+        "integration-pkg-0.1.0/CMakeLists.txt",
+        "integration-pkg-0.1.0/PKG-INFO",
+        "integration-pkg-0.1.0/conanfile.py",
+        "integration-pkg-0.1.0/pyproject.toml",
+        "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
+    ])
+    assert names == expected
+
+
+def test_build_wheel_integration(integration_project):
+    """Integration: build_wheel on a real project."""
+    wheel_dir = integration_project.work_dir / "wheelhouse"
+    wheel_dir.mkdir()
+    name = build_wheel(str(wheel_dir), config_settings=None)
+    assert name.endswith(".whl")
+    assert (Path(wheel_dir) / name).is_file()
