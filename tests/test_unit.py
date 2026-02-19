@@ -13,6 +13,9 @@ from conan_py_build.build import (
     _get_wheel_packages,
     _create_dist_info,
     _build_wheel_with_tags,
+    _get_license_files_patterns,
+    _expand_license_patterns,
+    _copy_license_files,
 )
 
 
@@ -186,6 +189,52 @@ def test_create_dist_info_creates_dir_and_metadata(tmp_path):
     content = (dist_info / "METADATA").read_text(encoding="utf-8")
     assert "Name: test-pkg" in content
     assert "Version: 1.0.0" in content
+
+
+@pytest.mark.parametrize("meta,expected", [
+    ({"name": "pkg", "license-files": ["LICENSE", "NOTICE"]}, ["LICENSE", "NOTICE"]),
+    ({"name": "pkg", "license-files": []}, []),
+    ({"name": "pkg", "version": "0.1.0"}, []),
+    ({"name": "pkg", "license-files": "LICENSE"}, ["LICENSE"]),
+])
+def test_get_license_files_patterns(meta, expected):
+    assert _get_license_files_patterns(meta) == expected
+
+
+def test_expand_license_patterns_matches_file(tmp_path):
+    (tmp_path / "LICENSE").write_text("MIT", encoding="utf-8")
+    expanded = _expand_license_patterns(tmp_path, ["LICENSE"])
+    assert len(expanded) == 1
+    assert expanded[0].name == "LICENSE"
+
+
+def test_expand_license_patterns_ignores_outside_root(tmp_path):
+    # ".." must be ignored so we never include files outside project root
+    (tmp_path / "LICENSE").write_text("", encoding="utf-8")
+    expanded = _expand_license_patterns(tmp_path, [".."])
+    assert expanded == []
+
+
+def test_copy_license_files_creates_licenses_dir_and_metadata_entry(tmp_path):
+    (tmp_path / "LICENSE").write_text("MIT License", encoding="utf-8")
+    dist_info = tmp_path / "pkg-1.0.0.dist-info"
+    dist_info.mkdir()
+    paths = _copy_license_files(dist_info, tmp_path, ["LICENSE"])
+    assert paths == ["LICENSE"]
+    license_in_wheel = dist_info / "licenses" / "LICENSE"
+    assert license_in_wheel.is_file()
+    assert license_in_wheel.read_text(encoding="utf-8") == "MIT License"
+
+
+def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
+    (tmp_path / "LICENSE").write_text("MIT", encoding="utf-8")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    metadata = {"name": "myadder", "version": "0.1.0", "license-files": ["LICENSE"]}
+    dist_info = _create_dist_info(staging, metadata, tmp_path)
+    assert (dist_info / "licenses" / "LICENSE").is_file()
+    meta_content = (dist_info / "METADATA").read_text(encoding="utf-8")
+    assert "License-File: LICENSE" in meta_content
 
 
 def test_build_wheel_with_tags_produces_whl(tmp_path):

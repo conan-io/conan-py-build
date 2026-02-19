@@ -6,4 +6,6 @@ build-backend = "conan_py_build.build"
 name = "myadder"
 version = "0.1.0"
 description = "A simple Python package with C++ code that adds two numbers"
+license = "MIT"
+license-files = ["LICENSE"]  # PEP 639: for wheel .dist-info/licenses/ + METADATA; sdist PKG-INFO
 requires-python = ">=3.8"

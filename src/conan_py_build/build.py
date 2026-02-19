@@ -1,4 +1,5 @@
 import ast
+import glob
 import io
 import os
 import shutil
@@ -181,9 +182,15 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
+def _write_metadata_file(
+    dist_info_dir: Path,
+    metadata: dict,
+    project_dir: Path,
+    license_file_paths: Optional[List[str]] = None,
+):
     """Write the METADATA file to dist-info directory.
     project_dir is used to resolve readme/license/dynamic paths.
+    license_file_paths: paths relative to .dist-info/licenses/ for License-File (PEP 639).
     """
     metadata_path = dist_info_dir / "METADATA"
     # StandardMetadata rejects project.version if project.dynamic contains
@@ -196,6 +203,74 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path)
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
     with metadata_path.open("w", encoding="utf-8") as f:
         f.write(str(std_metadata.as_rfc822()))
+    # PEP 639: add License-File entries so installers know where license files are
+    if license_file_paths:
+        with metadata_path.open("a", encoding="utf-8") as f:
+            for p in license_file_paths:
+                # Paths use forward slash per PEP 639
+                p_slash = p.replace("\\", "/")
+                f.write(f"License-File: {p_slash}\n")
+
+
+def _expand_license_patterns(project_dir: Path, patterns: List[str]) -> List[Path]:
+    """Expand PEP 639 license-files glob patterns; return sorted unique files under project_dir."""
+    project_resolved = project_dir.resolve()
+    seen = set()
+    for pattern in patterns:
+        if not pattern or ".." in pattern:
+            continue
+        # Glob relative to project root; path separators must be /
+        pattern_path = project_dir / pattern.strip().replace("/", os.sep)
+        for path in glob.glob(str(pattern_path)):
+            p = Path(path).resolve()
+            try:
+                p.relative_to(project_resolved)
+            except ValueError:
+                continue
+            if p.is_file() and p not in seen:
+                seen.add(p)
+    return sorted(seen)
+
+
+def _copy_license_files(
+    dist_info_dir: Path, project_dir: Path, patterns: List[str]
+) -> List[str]:
+    """Copy license files into dist-info/licenses/ (PEP 639).
+    patterns: glob patterns from [project].license-files or tool config.
+    Preserves directory structure relative to project root.
+    Returns list of paths relative to licenses/ for License-File metadata.
+    """
+    if not patterns:
+        return []
+    expanded = _expand_license_patterns(project_dir, patterns)
+    if not expanded:
+        return []
+    licenses_dir = dist_info_dir / "licenses"
+    project_resolved = project_dir.resolve()
+    license_file_paths = []
+    for src in expanded:
+        try:
+            rel = src.relative_to(project_resolved)
+        except ValueError:
+            continue
+        dest = licenses_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        # Path for METADATA: relative to licenses dir, forward slash
+        license_file_paths.append(rel.as_posix())
+    return license_file_paths
+
+
+def _get_license_files_patterns(metadata: dict) -> List[str]:
+    """PEP 639: get license-files patterns from [project].license-files only."""
+    if "license-files" not in metadata:
+        return []
+    raw = metadata.get("license-files")
+    if isinstance(raw, list):
+        return [p for p in raw if isinstance(p, str)]
+    if isinstance(raw, str):
+        return [raw]
+    return []
 
 
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
@@ -206,7 +281,13 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    _write_metadata_file(dist_info_dir, metadata, project_dir)
+    # Copy license files first so we can add License-File to METADATA (PEP 639)
+    patterns = _get_license_files_patterns(metadata)
+    license_file_paths = _copy_license_files(dist_info_dir, project_dir, patterns)
+
+    _write_metadata_file(
+        dist_info_dir, metadata, project_dir, license_file_paths=license_file_paths
+    )
 
     return dist_info_dir
 
@@ -476,6 +557,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         ]
         if "description" in project_metadata:
             pkg_info_lines.append(f"Summary: {project_metadata['description']}")
+        # PEP 639: License-File in sdist PKG-INFO (paths are under source_dir by construction)
+        resolved = source_dir.resolve()
+        for p in _expand_license_patterns(source_dir, _get_license_files_patterns(project_metadata)):
+            pkg_info_lines.append(f"License-File: {p.relative_to(resolved).as_posix()}")
 
         pkg_info_data = "\n".join(pkg_info_lines).encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")

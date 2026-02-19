@@ -15,11 +15,14 @@ def make_integration_project(path: Path) -> None:
 name = "integration-pkg"
 version = "0.1.0"
 description = "For integration tests"
+license-files = ["LICENSE"]
 
 [build-system]
 requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 """, encoding="utf-8")
+
+    (path / "LICENSE").write_text("MIT", encoding="utf-8")
 
     (path / "conanfile.py").write_text("""from conan import ConanFile
 from conan.tools.cmake import cmake_layout
@@ -58,7 +61,7 @@ def integration_project(tmp_path, monkeypatch):
 
 
 def test_build_sdist_produces_tarball(integration_project):
-    """Integration: build_sdist on a real project layout produces a valid sdist tarball."""
+    """Integration: build_sdist produces a valid tarball and PKG-INFO includes License-File (PEP 639)."""
     sdist_dir = integration_project.work_dir / "dist"
     sdist_dir.mkdir()
     filename = build_sdist(str(sdist_dir), config_settings=None)
@@ -69,14 +72,18 @@ def test_build_sdist_produces_tarball(integration_project):
 
     with tarfile.open(tarball, "r:gz") as tar:
         names = sorted(tar.getnames())
-    expected = sorted([
-        "integration-pkg-0.1.0/CMakeLists.txt",
-        "integration-pkg-0.1.0/PKG-INFO",
-        "integration-pkg-0.1.0/conanfile.py",
-        "integration-pkg-0.1.0/pyproject.toml",
-        "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
-    ])
-    assert names == expected
+        expected = sorted([
+            "integration-pkg-0.1.0/CMakeLists.txt",
+            "integration-pkg-0.1.0/LICENSE",
+            "integration-pkg-0.1.0/PKG-INFO",
+            "integration-pkg-0.1.0/conanfile.py",
+            "integration-pkg-0.1.0/pyproject.toml",
+            "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
+        ])
+        assert names == expected
+        # PEP 639: License-File in sdist PKG-INFO when [project].license-files is set
+        pkg_info = tar.extractfile("integration-pkg-0.1.0/PKG-INFO").read().decode("utf-8")
+        assert "License-File: LICENSE" in pkg_info
 
 
 def test_build_wheel_integration(integration_project):
