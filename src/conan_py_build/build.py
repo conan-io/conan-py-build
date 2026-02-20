@@ -206,10 +206,12 @@ def _write_metadata_file(
     """Write the METADATA file to dist-info directory.
     project_dir is used to resolve readme/license/dynamic paths.
     License-File is emitted by StandardMetadata (same path as PKG-INFO; files go under .dist-info/licenses/).
+    Use newline='\\n' so METADATA has Unix line endings on all platforms (matches sdist PKG-INFO).
     """
     metadata_path = dist_info_dir / "METADATA"
     content = _get_core_metadata_rfc822(metadata, project_dir)
-    metadata_path.write_text(content, encoding="utf-8")
+    with metadata_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
 
 
 def _expand_license_patterns(project_dir: Path, patterns: List[str]) -> List[Path]:
@@ -548,10 +550,11 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
-        # Same core metadata as METADATA (wheel); StandardMetadata emits License-File with source-relative paths
-        pkg_info_content = _get_core_metadata_rfc822(project_metadata, source_dir)
-        if pkg_info_content and not pkg_info_content.endswith("\n"):
-            pkg_info_content += "\n"
+        # Same core metadata as METADATA (wheel); use a copy so resolved name/version (e.g. dynamic = ["version"]) without mutating project_metadata
+        sdist_md = dict(project_metadata)
+        sdist_md["name"] = name
+        sdist_md["version"] = version
+        pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
         pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)
