@@ -183,8 +183,9 @@ def _build_directory(build_dir: Optional[str]):
 
 
 def _get_core_metadata_text(metadata: dict, project_dir: Path) -> str:
-    """Build Core Metadata as plain text (key-value lines), for METADATA and PKG-INFO.
-    metadata: [project] from pyproject.toml; project_dir: root for readme/license/dynamic paths.
+    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
+    metadata: [project] section from pyproject.toml.
+    project_dir: project root for resolving readme/license/dynamic paths.
     """
     project = dict(metadata)
     dynamic = project.get("dynamic")
