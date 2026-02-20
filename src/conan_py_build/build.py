@@ -186,7 +186,7 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path):
     """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
     metadata: [project] section from pyproject.toml.
     project_dir: project root for resolving readme/license/dynamic paths.
-    Returns StandardMetadata (use .as_rfc822() for text, .license_files for paths).
+    Returns StandardMetadata
     """
     project = dict(metadata)
     dynamic = project.get("dynamic")
