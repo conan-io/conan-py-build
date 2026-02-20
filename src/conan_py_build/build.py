@@ -236,7 +236,7 @@ def _copy_license_files(
     dist_info_dir: Path, project_dir: Path, patterns: List[str]
 ) -> List[str]:
     """Copy license files into dist-info/licenses/ (PEP 639).
-    patterns: glob patterns from [project].license-files or tool config.
+    patterns: glob patterns from [project].license-files.
     Preserves directory structure relative to project root.
     Returns list of paths relative to licenses/ for License-File metadata.
     """
