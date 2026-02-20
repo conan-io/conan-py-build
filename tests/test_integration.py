@@ -62,7 +62,7 @@ def integration_project(tmp_path, monkeypatch):
 
 
 def test_build_sdist_produces_tarball(integration_project):
-    """build_sdist produces a valid tarball; LICENSE and License-File in PKG-INFO when license-files is set."""
+    """Integration: build_sdist on a real project layout produces a valid sdist tarball."""
     sdist_dir = integration_project.work_dir / "dist"
     sdist_dir.mkdir()
     filename = build_sdist(str(sdist_dir), config_settings=None)
@@ -87,7 +87,7 @@ def test_build_sdist_produces_tarball(integration_project):
 
 
 def test_build_wheel_includes_license_in_dist_info(integration_project):
-    """Wheel contains .dist-info/licenses/LICENSE and METADATA lists License-File."""
+    """Integration: wheel contains .dist-info/licenses/LICENSE and METADATA lists License-File."""
     dist_dir = integration_project.work_dir / "dist"
     dist_dir.mkdir()
     build_wheel(str(dist_dir), config_settings=None)
@@ -101,7 +101,7 @@ def test_build_wheel_includes_license_in_dist_info(integration_project):
 
 
 def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
-    """PKG-INFO (sdist) and METADATA (wheel) are identical."""
+    """Integration: PKG-INFO (sdist) and METADATA (wheel) are the same core metadata."""
     dist_dir = integration_project.work_dir / "dist"
     dist_dir.mkdir()
     build_sdist(str(dist_dir), config_settings=None)
@@ -119,7 +119,7 @@ def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
 
 
 def test_build_wheel_integration(integration_project):
-    """build_wheel produces a .whl file."""
+    """Integration: build_wheel on a real project."""
     wheel_dir = integration_project.work_dir / "wheelhouse"
     wheel_dir.mkdir()
     name = build_wheel(str(wheel_dir), config_settings=None)

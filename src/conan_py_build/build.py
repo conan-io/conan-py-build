@@ -182,10 +182,11 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _get_core_metadata(metadata: dict, project_dir: Path):
-    """Build Core Metadata (StandardMetadata). Used for METADATA and PKG-INFO.
-    metadata: [project] from pyproject.toml; project_dir: root for readme/license/dynamic paths.
-    Returns StandardMetadata; use .as_rfc822() for text, .license_files for paths (Path, relative to project_dir).
+def _get_core_metadata_rfc822(metadata: dict, project_dir: Path):
+    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
+    metadata: [project] section from pyproject.toml.
+    project_dir: project root for resolving readme/license/dynamic paths.
+    Returns StandardMetadata (use .as_rfc822() for text, .license_files for paths).
     """
     project = dict(metadata)
     dynamic = project.get("dynamic")
@@ -213,6 +214,19 @@ def _copy_license_files_from_paths(
         shutil.copy2(src.resolve(), dest)
 
 
+def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
+    """Write the METADATA file to dist-info directory.
+    project_dir is used to resolve readme/license/dynamic paths.
+    Use newline='\\n' so METADATA has Unix line endings on all platforms (matches sdist PKG-INFO).
+    """
+    std_metadata = _get_core_metadata_rfc822(metadata, project_dir)
+    content = str(std_metadata.as_rfc822())
+    license_paths = [p.as_posix() for p in (std_metadata.license_files or [])]
+    _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
+    with (dist_info_dir / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+
+
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
     """Create .dist-info directory with metadata files."""
     name = _normalize_name(metadata.get("name", "unknown"))
@@ -221,14 +235,7 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    # License files: use StandardMetadata (text + license_files paths), copy those files
-    std_meta = _get_core_metadata(metadata, project_dir)
-    content = str(std_meta.as_rfc822())
-    license_paths = [p.as_posix() for p in (std_meta.license_files or [])]
-    _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
-
-    with (dist_info_dir / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
-        f.write(content)
+    _write_metadata_file(dist_info_dir, metadata, project_dir)
 
     return dist_info_dir
 
@@ -457,11 +464,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "*.egg-info",
         ".eggs",
     ]
-    # Same metadata as wheel: StandardMetadata for PKG-INFO text and license paths
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
     sdist_md["version"] = version
-    std_meta_sdist = _get_core_metadata(sdist_md, source_dir)
+    std_meta_sdist = _get_core_metadata_rfc822(sdist_md, source_dir)
     pkg_info_content = str(std_meta_sdist.as_rfc822())
     license_paths_sdist = [p.as_posix() for p in (std_meta_sdist.license_files or [])]
     include_patterns = default_include + sdist_config["include"]
@@ -488,9 +494,9 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     with tarfile.open(sdist_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
         for pattern in include_patterns:
-            pattern_path = source_dir / pattern.strip().replace("/", os.sep)
-            # Glob patterns (e.g. license-files "licenses/*.txt") must be expanded
+            source_path = source_dir / pattern
             if "*" in pattern or "?" in pattern:
+                pattern_path = source_dir / pattern.strip().replace("/", os.sep)
                 for path in glob.glob(str(pattern_path), recursive=True):
                     file_path = Path(path).resolve()
                     if not file_path.is_file():
@@ -507,14 +513,14 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                     added_arcnames.add(arcname)
                     tar.add(file_path, arcname=arcname)
                 continue
-            if pattern_path.exists():
-                if pattern_path.is_file():
+            if source_path.exists():
+                if source_path.is_file():
                     arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
                     if arcname not in added_arcnames:
                         added_arcnames.add(arcname)
-                        tar.add(pattern_path, arcname=arcname)
-                elif pattern_path.is_dir():
-                    for file_path in pattern_path.rglob("*"):
+                        tar.add(source_path, arcname=arcname)
+                elif source_path.is_dir():
+                    for file_path in source_path.rglob("*"):
                         if file_path.is_file() and not should_exclude(file_path):
                             rel_path = file_path.relative_to(source_dir)
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
