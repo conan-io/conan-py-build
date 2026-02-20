@@ -192,10 +192,7 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    content = str(std_metadata.as_rfc822())
-    if content and not content.endswith("\n"):
-        content += "\n"
-    return content
+    return str(std_metadata.as_rfc822())
 
 
 def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
