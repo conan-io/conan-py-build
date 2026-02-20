@@ -550,7 +550,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
-        # Same core metadata as METADATA (wheel); use a copy so resolved name/version (e.g. dynamic = ["version"]) without mutating project_metadata
         sdist_md = dict(project_metadata)
         sdist_md["name"] = name
         sdist_md["version"] = version
