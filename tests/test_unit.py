@@ -16,7 +16,6 @@ from conan_py_build.build import (
     _get_license_files_patterns,
     _parse_license_file_paths_from_metadata_text,
     _copy_license_files_from_paths,
-    _validate_license_files_patterns,
 )
 
 
@@ -203,24 +202,23 @@ def test_get_license_files_patterns(meta, expected):
 
 
 def test_parse_license_file_paths_from_metadata_text():
-    content = "Name: pkg\nVersion: 1.0\nLicense-File: LICENSE\nLicense-File: docs/COPYING\n"
-    assert _parse_license_file_paths_from_metadata_text(content) == ["LICENSE", "docs/COPYING"]
+    assert _parse_license_file_paths_from_metadata_text(
+        "Name: pkg\nVersion: 1.0\nLicense-File: LICENSE\nLicense-File: docs/COPYING\n"
+    ) == ["LICENSE", "docs/COPYING"]
     assert _parse_license_file_paths_from_metadata_text("Name: pkg\n") == []
 
 
-def test_validate_license_files_patterns_rejects_dotdot():
+def test_get_license_files_patterns_rejects_dotdot():
     with pytest.raises(RuntimeError, match="must not contain '\\.\\.'"):
-        _validate_license_files_patterns({"name": "pkg", "license-files": [".."]})
+        _get_license_files_patterns({"name": "pkg", "license-files": [".."]})
 
 
 def test_copy_license_files_from_paths_creates_licenses_dir(tmp_path):
-    (tmp_path / "LICENSE").write_text("MIT License", encoding="utf-8")
+    (tmp_path / "LICENSE").write_text("MIT", encoding="utf-8")
     dist_info = tmp_path / "pkg-1.0.0.dist-info"
     dist_info.mkdir()
     _copy_license_files_from_paths(dist_info, tmp_path, ["LICENSE"])
-    license_in_wheel = dist_info / "licenses" / "LICENSE"
-    assert license_in_wheel.is_file()
-    assert license_in_wheel.read_text(encoding="utf-8") == "MIT License"
+    assert (dist_info / "licenses" / "LICENSE").read_text() == "MIT"
 
 
 def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
@@ -235,11 +233,11 @@ def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
 
 
 def test_create_dist_info_license_files_match_none_raises(tmp_path):
-    """PEP 639: if license-files is set and patterns match no files, build must fail."""
+    """license-files pattern that matches no file raises (pyproject_metadata)."""
     staging = tmp_path / "staging"
     staging.mkdir()
     metadata = {"name": "pkg", "version": "0.1.0", "license-files": ["nonexistent.txt"]}
-    with pytest.raises(Exception, match="must match at least one file|matched no files"):
+    with pytest.raises(Exception, match="must match at least one file"):
         _create_dist_info(staging, metadata, tmp_path)
 
 

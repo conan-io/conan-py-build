@@ -199,73 +199,52 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
 
 
 def _parse_license_file_paths_from_metadata_text(metadata_text: str) -> List[str]:
-    """Parse License-File entries from plain-text metadata (METADATA / PKG-INFO).
-    The format is key-value lines; multiple files are repeated keys or comma-separated.
-    Returns list of paths (e.g. ['LICENSE', 'licenses/foo.txt']) in order.
-    """
+    """Extract License-File paths from plain-text METADATA/PKG-INFO (key-value lines)."""
     paths = []
     for line in metadata_text.splitlines():
         if line.startswith("License-File:"):
-            value = line[13:].strip()
-            for part in value.split(","):
+            for part in line[13:].strip().split(","):
                 path = part.strip()
                 if path:
                     paths.append(path)
     return paths
 
 
-def _validate_license_files_patterns(metadata: dict) -> None:
-    """PEP 639: patterns must be relative and must not contain '..'. Raises on invalid pattern."""
-    patterns = _get_license_files_patterns(metadata)
+def _get_license_files_patterns(metadata: dict) -> List[str]:
+    """Return [project].license-files patterns; raise if any pattern contains '..'."""
+    if "license-files" not in metadata:
+        return []
+    raw = metadata.get("license-files")
+    if isinstance(raw, list):
+        patterns = [p for p in raw if isinstance(p, str)]
+    elif isinstance(raw, str):
+        patterns = [raw]
+    else:
+        return []
     for p in patterns:
-        if not isinstance(p, str) or ".." in p:
+        if ".." in p:
             raise RuntimeError(
-                "PEP 639: license-files patterns must be relative paths and must not contain '..'"
+                "license-files patterns must be relative and must not contain '..'"
             )
+    return patterns
 
 
 def _copy_license_files_from_paths(
     dist_info_dir: Path, project_dir: Path, license_paths: List[str]
 ) -> None:
-    """Copy license files into dist-info/licenses/ (PEP 639).
-    license_paths: paths relative to project_dir (as emitted by StandardMetadata in License-File).
-    """
+    """Copy listed license files into dist-info/licenses/ (paths relative to project_dir)."""
     if not license_paths:
         return
     project_resolved = project_dir.resolve()
     licenses_dir = dist_info_dir / "licenses"
     for rel_path_str in license_paths:
-        if ".." in rel_path_str:
-            raise RuntimeError(
-                f"PEP 639: License-File path must not contain '..': {rel_path_str!r}"
-            )
         src = project_dir / rel_path_str.replace("/", os.sep)
         if not src.is_file():
-            raise FileNotFoundError(
-                f"PEP 639: license file not found: {rel_path_str!r} (resolved: {src})"
-            )
-        src_resolved = src.resolve()
-        try:
-            rel = src_resolved.relative_to(project_resolved)
-        except ValueError:
-            raise RuntimeError(
-                f"PEP 639: license file must be under project root: {rel_path_str!r}"
-            )
+            raise FileNotFoundError(f"license file not found: {rel_path_str!r}")
+        rel = src.resolve().relative_to(project_resolved)
         dest = licenses_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src_resolved, dest)
-
-
-def _get_license_files_patterns(metadata: dict) -> List[str]:
-    """PEP 639: get license-files patterns from [project].license-files only."""
-    if "license-files" not in metadata:
-        return []
-    raw = metadata.get("license-files")
-    if isinstance(raw, list):
-        return [p for p in raw if isinstance(p, str)]
-    if isinstance(raw, str):
-        return [raw]
-    return []
+        shutil.copy2(src.resolve(), dest)
 
 
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
@@ -276,16 +255,10 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    # PEP 639: StandardMetadata is source of truth; parse License-File from content, copy those paths
-    _validate_license_files_patterns(metadata)
+    # License files: generate METADATA (StandardMetadata), parse License-File lines, copy those files
+    _get_license_files_patterns(metadata)  # validate no ".." in patterns
     content = _get_core_metadata_rfc822(metadata, project_dir)
     license_paths = _parse_license_file_paths_from_metadata_text(content)
-    patterns = _get_license_files_patterns(metadata)
-    if patterns and not license_paths:
-        raise RuntimeError(
-            "PEP 639: license-files patterns matched no files. "
-            "Every pattern must match at least one file under the project root."
-        )
     _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
 
     with (dist_info_dir / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
@@ -518,18 +491,13 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "*.egg-info",
         ".eggs",
     ]
-    # PEP 639: use same source of truth as wheel – parse License-File from generated metadata, add those paths to tarball
+    # Same metadata as wheel: generate PKG-INFO content, parse License-File paths, add those files to tarball
+    _get_license_files_patterns(project_metadata)  # validate no ".." in patterns
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
     sdist_md["version"] = version
     pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
     license_paths_sdist = _parse_license_file_paths_from_metadata_text(pkg_info_content)
-    if _get_license_files_patterns(project_metadata) and not license_paths_sdist:
-        raise RuntimeError(
-            "PEP 639: license-files patterns matched no files. "
-            "Every pattern must match at least one file under the project root."
-        )
-    _validate_license_files_patterns(project_metadata)
     include_patterns = default_include + sdist_config["include"]
     exclude_patterns = default_exclude + sdist_config["exclude"]
 
@@ -589,13 +557,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             added_arcnames.add(arcname)
                             tar.add(file_path, arcname=arcname)
 
-        # PEP 639: add exactly the files listed in License-File (same list as in PKG-INFO)
         for rel_path_str in license_paths_sdist:
             src = source_dir / rel_path_str.replace("/", os.sep)
             if not src.is_file():
-                raise FileNotFoundError(
-                    f"PEP 639: license file not found for sdist: {rel_path_str!r} (resolved: {src})"
-                )
+                raise FileNotFoundError(f"license file not found for sdist: {rel_path_str!r}")
             arcname = f"{sdist_name}/{rel_path_str}"
             if arcname not in added_arcnames:
                 added_arcnames.add(arcname)
