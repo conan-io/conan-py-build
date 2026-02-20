@@ -1,6 +1,7 @@
 """Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
 import tarfile
 import types
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -77,6 +78,24 @@ def test_build_sdist_produces_tarball(integration_project):
         "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
     ])
     assert names == expected
+
+
+def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
+    """Integration: PKG-INFO (sdist) and METADATA (wheel) are the same core metadata."""
+    dist_dir = integration_project.work_dir / "dist"
+    dist_dir.mkdir()
+    build_sdist(str(dist_dir), config_settings=None)
+    build_wheel(str(dist_dir), config_settings=None)
+
+    with tarfile.open(dist_dir / "integration-pkg-0.1.0.tar.gz", "r:gz") as tar:
+        pkg_info = tar.extractfile("integration-pkg-0.1.0/PKG-INFO").read().decode("utf-8")
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        (metadata_name,) = [n for n in zf.namelist() if n.endswith(".dist-info/METADATA")]
+        wheel_metadata = zf.read(metadata_name).decode("utf-8")
+
+    assert pkg_info.strip() == wheel_metadata.strip(), "PKG-INFO and METADATA must be the same core metadata"
 
 
 def test_build_wheel_integration(integration_project):

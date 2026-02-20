@@ -181,21 +181,29 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
-    """Write the METADATA file to dist-info directory.
-    project_dir is used to resolve readme/license/dynamic paths.
+def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
+    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
+    metadata: [project] section from pyproject.toml.
+    project_dir: project root for resolving readme/license/dynamic paths.
     """
-    metadata_path = dist_info_dir / "METADATA"
-    # StandardMetadata rejects project.version if project.dynamic contains
-    # "version". We resolved it, so remove from dynamic.
     project = dict(metadata)
     dynamic = project.get("dynamic")
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    with metadata_path.open("w", encoding="utf-8") as f:
-        f.write(str(std_metadata.as_rfc822()))
+    return str(std_metadata.as_rfc822())
+
+
+def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
+    """Write the METADATA file to dist-info directory.
+    project_dir is used to resolve readme/license/dynamic paths.
+    Use newline='\\n' so METADATA has Unix line endings on all platforms (matches sdist PKG-INFO).
+    """
+    metadata_path = dist_info_dir / "METADATA"
+    content = _get_core_metadata_rfc822(metadata, project_dir)
+    with metadata_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
 
 
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
@@ -469,15 +477,11 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
-        pkg_info_lines = [
-            "Metadata-Version: 2.1",
-            f"Name: {name}",
-            f"Version: {version}",
-        ]
-        if "description" in project_metadata:
-            pkg_info_lines.append(f"Summary: {project_metadata['description']}")
-
-        pkg_info_data = "\n".join(pkg_info_lines).encode("utf-8")
+        sdist_md = dict(project_metadata)
+        sdist_md["name"] = name
+        sdist_md["version"] = version
+        pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
+        pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)
         tar.addfile(pkg_info_file, io.BytesIO(pkg_info_data))
