@@ -181,8 +181,8 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
-    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
+def _get_standard_metadata(metadata: dict, project_dir: Path):
+    """Build StandardMetadata from [project] section (for METADATA and PKG-INFO).
     metadata: [project] section from pyproject.toml.
     project_dir: project root for resolving readme/license/dynamic paths.
     """
@@ -191,8 +191,25 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
-    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    return str(std_metadata.as_rfc822())
+    return StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
+
+
+def _copy_license_files_from_paths(
+    dist_info_dir: Path, project_dir: Path, license_paths: List[str]
+) -> None:
+    """Copy listed license files into dist-info/licenses/ (paths relative to project_dir)."""
+    if not license_paths:
+        return
+    project_resolved = project_dir.resolve()
+    licenses_dir = dist_info_dir / "licenses"
+    for rel_path_str in license_paths:
+        src = project_dir / rel_path_str.replace("/", os.sep)
+        if not src.is_file():
+            raise FileNotFoundError(f"license file not found: {rel_path_str!r}")
+        rel = src.resolve().relative_to(project_resolved)
+        dest = licenses_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src.resolve(), dest)
 
 
 def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
@@ -200,9 +217,11 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path)
     project_dir is used to resolve readme/license/dynamic paths.
     Use newline='\\n' so METADATA has Unix line endings on all platforms (matches sdist PKG-INFO).
     """
-    metadata_path = dist_info_dir / "METADATA"
-    content = _get_core_metadata_rfc822(metadata, project_dir)
-    with metadata_path.open("w", encoding="utf-8", newline="\n") as f:
+    std_metadata = _get_standard_metadata(metadata, project_dir)
+    content = str(std_metadata.as_rfc822())
+    license_paths = [p.as_posix() for p in (std_metadata.license_files or [])]
+    _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
+    with (dist_info_dir / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
         f.write(content)
 
 
@@ -443,6 +462,12 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "*.egg-info",
         ".eggs",
     ]
+    sdist_md = dict(project_metadata)
+    sdist_md["name"] = name
+    sdist_md["version"] = version
+    std_meta_sdist = _get_standard_metadata(sdist_md, source_dir)
+    pkg_info_content = str(std_meta_sdist.as_rfc822())
+    license_paths_sdist = [p.as_posix() for p in (std_meta_sdist.license_files or [])]
     include_patterns = default_include + sdist_config["include"]
     exclude_patterns = default_exclude + sdist_config["exclude"]
 
@@ -463,24 +488,36 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     sdist_path = sdist_dir / sdist_filename
 
+    added_arcnames = set()
+
     with tarfile.open(sdist_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
         for pattern in include_patterns:
             source_path = source_dir / pattern
             if source_path.exists():
                 if source_path.is_file():
                     arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
-                    tar.add(source_path, arcname=arcname)
+                    if arcname not in added_arcnames:
+                        added_arcnames.add(arcname)
+                        tar.add(source_path, arcname=arcname)
                 elif source_path.is_dir():
                     for file_path in source_path.rglob("*"):
                         if file_path.is_file() and not should_exclude(file_path):
                             rel_path = file_path.relative_to(source_dir)
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
+                            if arcname in added_arcnames:
+                                continue
+                            added_arcnames.add(arcname)
                             tar.add(file_path, arcname=arcname)
 
-        sdist_md = dict(project_metadata)
-        sdist_md["name"] = name
-        sdist_md["version"] = version
-        pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
+        for rel_path_str in license_paths_sdist:
+            src = source_dir / rel_path_str.replace("/", os.sep)
+            if not src.is_file():
+                raise FileNotFoundError(f"license file not found for sdist: {rel_path_str!r}")
+            arcname = f"{sdist_name}/{rel_path_str}"
+            if arcname not in added_arcnames:
+                added_arcnames.add(arcname)
+                tar.add(src.resolve(), arcname=arcname)
+
         pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)

@@ -76,6 +76,10 @@ There is limited support for dynamic version: set `dynamic = ["version"]` in
 `[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
 backend reads `__version__ = "x.y.z"` from that file.
 
+### License files (PEP 639)
+
+The backend supports [PEP 639](https://peps.python.org/pep-0639/) license metadata. Set `[project].license-files` in `pyproject.toml` to a list of glob patterns (e.g. `["LICENSE"]`) to include those files in the wheel under `.dist-info/licenses/` and add `License-File` entries to METADATA and to the sdist PKG-INFO. If `license-files` is not set, no license files are included.
+
 ### Wheel packages
 
 You can control which Python packages are included in the wheel via

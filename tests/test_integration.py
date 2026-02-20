@@ -16,11 +16,14 @@ def make_integration_project(path: Path) -> None:
 name = "integration-pkg"
 version = "0.1.0"
 description = "For integration tests"
+license-files = ["LICENSE"]
 
 [build-system]
 requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 """, encoding="utf-8")
+
+    (path / "LICENSE").write_text("MIT", encoding="utf-8")
 
     (path / "conanfile.py").write_text("""from conan import ConanFile
 from conan.tools.cmake import cmake_layout
@@ -70,14 +73,31 @@ def test_build_sdist_produces_tarball(integration_project):
 
     with tarfile.open(tarball, "r:gz") as tar:
         names = sorted(tar.getnames())
-    expected = sorted([
-        "integration-pkg-0.1.0/CMakeLists.txt",
-        "integration-pkg-0.1.0/PKG-INFO",
-        "integration-pkg-0.1.0/conanfile.py",
-        "integration-pkg-0.1.0/pyproject.toml",
-        "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
-    ])
-    assert names == expected
+        expected = sorted([
+            "integration-pkg-0.1.0/CMakeLists.txt",
+            "integration-pkg-0.1.0/LICENSE",
+            "integration-pkg-0.1.0/PKG-INFO",
+            "integration-pkg-0.1.0/conanfile.py",
+            "integration-pkg-0.1.0/pyproject.toml",
+            "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
+        ])
+        assert names == expected
+        pkg_info = tar.extractfile("integration-pkg-0.1.0/PKG-INFO").read().decode("utf-8")
+        assert "License-File: LICENSE" in pkg_info
+
+
+def test_build_wheel_includes_license_in_dist_info(integration_project):
+    """Integration: wheel contains .dist-info/licenses/LICENSE and METADATA lists License-File."""
+    dist_dir = integration_project.work_dir / "dist"
+    dist_dir.mkdir()
+    build_wheel(str(dist_dir), config_settings=None)
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        names = zf.namelist()
+        assert any(n.endswith(".dist-info/licenses/LICENSE") for n in names)
+        (metadata_name,) = [n for n in names if n.endswith(".dist-info/METADATA")]
+        assert "License-File: LICENSE" in zf.read(metadata_name).decode("utf-8")
 
 
 def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
