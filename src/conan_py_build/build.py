@@ -208,18 +208,6 @@ def _parse_license_file_paths_from_metadata_text(metadata_text: str) -> List[str
     return paths
 
 
-def _get_license_files_patterns(metadata: dict) -> List[str]:
-    """Return [project].license-files patterns (validation is done by StandardMetadata)."""
-    if "license-files" not in metadata:
-        return []
-    raw = metadata.get("license-files")
-    if isinstance(raw, list):
-        return [p for p in raw if isinstance(p, str)]
-    if isinstance(raw, str):
-        return [raw]
-    return []
-
-
 def _copy_license_files_from_paths(
     dist_info_dir: Path, project_dir: Path, license_paths: List[str]
 ) -> None:

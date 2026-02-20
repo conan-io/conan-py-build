@@ -13,7 +13,6 @@ from conan_py_build.build import (
     _get_wheel_packages,
     _create_dist_info,
     _build_wheel_with_tags,
-    _get_license_files_patterns,
     _parse_license_file_paths_from_metadata_text,
     _copy_license_files_from_paths,
 )
@@ -189,16 +188,6 @@ def test_create_dist_info_creates_dir_and_metadata(tmp_path):
     content = (dist_info / "METADATA").read_text(encoding="utf-8")
     assert "Name: test-pkg" in content
     assert "Version: 1.0.0" in content
-
-
-@pytest.mark.parametrize("meta,expected", [
-    ({"name": "pkg", "license-files": ["LICENSE", "NOTICE"]}, ["LICENSE", "NOTICE"]),
-    ({"name": "pkg", "license-files": []}, []),
-    ({"name": "pkg", "version": "0.1.0"}, []),
-    ({"name": "pkg", "license-files": "LICENSE"}, ["LICENSE"]),
-])
-def test_get_license_files_patterns(meta, expected):
-    assert _get_license_files_patterns(meta) == expected
 
 
 def test_parse_license_file_paths_from_metadata_text():
