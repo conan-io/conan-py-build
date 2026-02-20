@@ -182,30 +182,17 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _get_core_metadata_text(metadata: dict, project_dir: Path) -> str:
-    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
-    metadata: [project] section from pyproject.toml.
-    project_dir: project root for resolving readme/license/dynamic paths.
+def _get_core_metadata(metadata: dict, project_dir: Path):
+    """Build Core Metadata (StandardMetadata). Used for METADATA and PKG-INFO.
+    metadata: [project] from pyproject.toml; project_dir: root for readme/license/dynamic paths.
+    Returns StandardMetadata; use .as_rfc822() for text, .license_files for paths (Path, relative to project_dir).
     """
     project = dict(metadata)
     dynamic = project.get("dynamic")
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
-    std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    return str(std_metadata.as_rfc822())
-
-
-def _parse_license_file_paths_from_metadata_text(metadata_text: str) -> List[str]:
-    """Extract License-File paths from plain-text METADATA/PKG-INFO (key-value lines)."""
-    paths = []
-    for line in metadata_text.splitlines():
-        if line.startswith("License-File:"):
-            for part in line[13:].strip().split(","):
-                path = part.strip()
-                if path:
-                    paths.append(path)
-    return paths
+    return StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
 
 
 def _copy_license_files_from_paths(
@@ -234,9 +221,10 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    # License files: generate METADATA (StandardMetadata), parse License-File lines, copy those files
-    content = _get_core_metadata_text(metadata, project_dir)
-    license_paths = _parse_license_file_paths_from_metadata_text(content)
+    # License files: use StandardMetadata (text + license_files paths), copy those files
+    std_meta = _get_core_metadata(metadata, project_dir)
+    content = str(std_meta.as_rfc822())
+    license_paths = [p.as_posix() for p in (std_meta.license_files or [])]
     _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
 
     with (dist_info_dir / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
@@ -469,12 +457,13 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "*.egg-info",
         ".eggs",
     ]
-    # Same metadata as wheel: generate PKG-INFO content, parse License-File paths, add those files to tarball
+    # Same metadata as wheel: StandardMetadata for PKG-INFO text and license paths
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
     sdist_md["version"] = version
-    pkg_info_content = _get_core_metadata_text(sdist_md, source_dir)
-    license_paths_sdist = _parse_license_file_paths_from_metadata_text(pkg_info_content)
+    std_meta_sdist = _get_core_metadata(sdist_md, source_dir)
+    pkg_info_content = str(std_meta_sdist.as_rfc822())
+    license_paths_sdist = [p.as_posix() for p in (std_meta_sdist.license_files or [])]
     include_patterns = default_include + sdist_config["include"]
     exclude_patterns = default_exclude + sdist_config["exclude"]
 

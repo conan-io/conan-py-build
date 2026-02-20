@@ -13,7 +13,6 @@ from conan_py_build.build import (
     _get_wheel_packages,
     _create_dist_info,
     _build_wheel_with_tags,
-    _parse_license_file_paths_from_metadata_text,
     _copy_license_files_from_paths,
 )
 
@@ -188,13 +187,6 @@ def test_create_dist_info_creates_dir_and_metadata(tmp_path):
     content = (dist_info / "METADATA").read_text(encoding="utf-8")
     assert "Name: test-pkg" in content
     assert "Version: 1.0.0" in content
-
-
-def test_parse_license_file_paths_from_metadata_text():
-    assert _parse_license_file_paths_from_metadata_text(
-        "Name: pkg\nVersion: 1.0\nLicense-File: LICENSE\nLicense-File: docs/COPYING\n"
-    ) == ["LICENSE", "docs/COPYING"]
-    assert _parse_license_file_paths_from_metadata_text("Name: pkg\n") == []
 
 
 def test_license_files_dotdot_rejected(tmp_path):
