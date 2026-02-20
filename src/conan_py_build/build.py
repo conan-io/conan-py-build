@@ -1,5 +1,4 @@
 import ast
-import glob
 import io
 import os
 import shutil
@@ -495,24 +494,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     with tarfile.open(sdist_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
         for pattern in include_patterns:
             source_path = source_dir / pattern
-            if "*" in pattern or "?" in pattern:
-                pattern_path = source_dir / pattern.strip().replace("/", os.sep)
-                for path in glob.glob(str(pattern_path), recursive=True):
-                    file_path = Path(path).resolve()
-                    if not file_path.is_file():
-                        continue
-                    try:
-                        rel_path = file_path.relative_to(source_dir.resolve())
-                    except ValueError:
-                        continue
-                    if should_exclude(file_path):
-                        continue
-                    arcname = f"{sdist_name}/{rel_path.as_posix()}"
-                    if arcname in added_arcnames:
-                        continue
-                    added_arcnames.add(arcname)
-                    tar.add(file_path, arcname=arcname)
-                continue
             if source_path.exists():
                 if source_path.is_file():
                     arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
