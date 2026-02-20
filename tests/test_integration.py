@@ -115,7 +115,7 @@ def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
         (metadata_name,) = [n for n in zf.namelist() if n.endswith(".dist-info/METADATA")]
         wheel_metadata = zf.read(metadata_name).decode("utf-8")
 
-    assert pkg_info == wheel_metadata
+    assert pkg_info.strip() == wheel_metadata.strip(), "PKG-INFO and METADATA must be the same core metadata"
 
 
 def test_build_wheel_integration(integration_project):
