@@ -182,10 +182,9 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
-    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
-    metadata: [project] section from pyproject.toml.
-    project_dir: project root for resolving readme/license/dynamic paths.
+def _get_core_metadata_text(metadata: dict, project_dir: Path) -> str:
+    """Build Core Metadata as plain text (key-value lines), for METADATA and PKG-INFO.
+    metadata: [project] from pyproject.toml; project_dir: root for readme/license/dynamic paths.
     """
     project = dict(metadata)
     dynamic = project.get("dynamic")
@@ -255,7 +254,7 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
 
     # License files: generate METADATA (StandardMetadata), parse License-File lines, copy those files
     _get_license_files_patterns(metadata)  # validate no ".." in patterns
-    content = _get_core_metadata_rfc822(metadata, project_dir)
+    content = _get_core_metadata_text(metadata, project_dir)
     license_paths = _parse_license_file_paths_from_metadata_text(content)
     _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
 
@@ -494,7 +493,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
     sdist_md["version"] = version
-    pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
+    pkg_info_content = _get_core_metadata_text(sdist_md, source_dir)
     license_paths_sdist = _parse_license_file_paths_from_metadata_text(pkg_info_content)
     include_patterns = default_include + sdist_config["include"]
     exclude_patterns = default_exclude + sdist_config["exclude"]
