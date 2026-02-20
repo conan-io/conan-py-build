@@ -209,22 +209,15 @@ def _parse_license_file_paths_from_metadata_text(metadata_text: str) -> List[str
 
 
 def _get_license_files_patterns(metadata: dict) -> List[str]:
-    """Return [project].license-files patterns; raise if any pattern contains '..'."""
+    """Return [project].license-files patterns (validation is done by StandardMetadata)."""
     if "license-files" not in metadata:
         return []
     raw = metadata.get("license-files")
     if isinstance(raw, list):
-        patterns = [p for p in raw if isinstance(p, str)]
-    elif isinstance(raw, str):
-        patterns = [raw]
-    else:
-        return []
-    for p in patterns:
-        if ".." in p:
-            raise RuntimeError(
-                "license-files patterns must be relative and must not contain '..'"
-            )
-    return patterns
+        return [p for p in raw if isinstance(p, str)]
+    if isinstance(raw, str):
+        return [raw]
+    return []
 
 
 def _copy_license_files_from_paths(
@@ -254,7 +247,6 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
     # License files: generate METADATA (StandardMetadata), parse License-File lines, copy those files
-    _get_license_files_patterns(metadata)  # validate no ".." in patterns
     content = _get_core_metadata_text(metadata, project_dir)
     license_paths = _parse_license_file_paths_from_metadata_text(content)
     _copy_license_files_from_paths(dist_info_dir, project_dir, license_paths)
@@ -490,7 +482,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         ".eggs",
     ]
     # Same metadata as wheel: generate PKG-INFO content, parse License-File paths, add those files to tarball
-    _get_license_files_patterns(project_metadata)  # validate no ".." in patterns
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
     sdist_md["version"] = version

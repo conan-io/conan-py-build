@@ -208,9 +208,14 @@ def test_parse_license_file_paths_from_metadata_text():
     assert _parse_license_file_paths_from_metadata_text("Name: pkg\n") == []
 
 
-def test_get_license_files_patterns_rejects_dotdot():
-    with pytest.raises(RuntimeError, match="must not contain '\\.\\.'"):
-        _get_license_files_patterns({"name": "pkg", "license-files": [".."]})
+def test_license_files_dotdot_rejected(tmp_path):
+    """pyproject_metadata rejects license-files pattern '..' (must match within project)."""
+    (tmp_path / "LICENSE").write_text("", encoding="utf-8")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    metadata = {"name": "pkg", "version": "0.1.0", "license-files": [".."]}
+    with pytest.raises(Exception, match="invalid.*license-files|within the project"):
+        _create_dist_info(staging, metadata, tmp_path)
 
 
 def test_copy_license_files_from_paths_creates_licenses_dir(tmp_path):
