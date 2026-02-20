@@ -14,8 +14,9 @@ from conan_py_build.build import (
     _create_dist_info,
     _build_wheel_with_tags,
     _get_license_files_patterns,
-    _expand_license_patterns,
-    _copy_license_files,
+    _parse_license_file_paths_from_metadata_text,
+    _copy_license_files_from_paths,
+    _validate_license_files_patterns,
 )
 
 
@@ -201,26 +202,22 @@ def test_get_license_files_patterns(meta, expected):
     assert _get_license_files_patterns(meta) == expected
 
 
-def test_expand_license_patterns_matches_file(tmp_path):
-    (tmp_path / "LICENSE").write_text("MIT", encoding="utf-8")
-    expanded = _expand_license_patterns(tmp_path, ["LICENSE"])
-    assert len(expanded) == 1
-    assert expanded[0].name == "LICENSE"
+def test_parse_license_file_paths_from_metadata_text():
+    content = "Name: pkg\nVersion: 1.0\nLicense-File: LICENSE\nLicense-File: docs/COPYING\n"
+    assert _parse_license_file_paths_from_metadata_text(content) == ["LICENSE", "docs/COPYING"]
+    assert _parse_license_file_paths_from_metadata_text("Name: pkg\n") == []
 
 
-def test_expand_license_patterns_ignores_outside_root(tmp_path):
-    # ".." must be ignored so we never include files outside project root
-    (tmp_path / "LICENSE").write_text("", encoding="utf-8")
-    expanded = _expand_license_patterns(tmp_path, [".."])
-    assert expanded == []
+def test_validate_license_files_patterns_rejects_dotdot():
+    with pytest.raises(RuntimeError, match="must not contain '\\.\\.'"):
+        _validate_license_files_patterns({"name": "pkg", "license-files": [".."]})
 
 
-def test_copy_license_files_creates_licenses_dir_and_metadata_entry(tmp_path):
+def test_copy_license_files_from_paths_creates_licenses_dir(tmp_path):
     (tmp_path / "LICENSE").write_text("MIT License", encoding="utf-8")
     dist_info = tmp_path / "pkg-1.0.0.dist-info"
     dist_info.mkdir()
-    paths = _copy_license_files(dist_info, tmp_path, ["LICENSE"])
-    assert paths == ["LICENSE"]
+    _copy_license_files_from_paths(dist_info, tmp_path, ["LICENSE"])
     license_in_wheel = dist_info / "licenses" / "LICENSE"
     assert license_in_wheel.is_file()
     assert license_in_wheel.read_text(encoding="utf-8") == "MIT License"
@@ -235,6 +232,15 @@ def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
     assert (dist_info / "licenses" / "LICENSE").is_file()
     meta_content = (dist_info / "METADATA").read_text(encoding="utf-8")
     assert "License-File: LICENSE" in meta_content
+
+
+def test_create_dist_info_license_files_match_none_raises(tmp_path):
+    """PEP 639: if license-files is set and patterns match no files, build must fail."""
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    metadata = {"name": "pkg", "version": "0.1.0", "license-files": ["nonexistent.txt"]}
+    with pytest.raises(Exception, match="must match at least one file|matched no files"):
+        _create_dist_info(staging, metadata, tmp_path)
 
 
 def test_build_wheel_with_tags_produces_whl(tmp_path):
