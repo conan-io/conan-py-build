@@ -182,34 +182,34 @@ def _build_directory(build_dir: Optional[str]):
             yield Path(tmp_dir)
 
 
-def _write_metadata_file(
-    dist_info_dir: Path,
-    metadata: dict,
-    project_dir: Path,
-    license_file_paths: Optional[List[str]] = None,
-):
-    """Write the METADATA file to dist-info directory.
-    project_dir is used to resolve readme/license/dynamic paths.
-    license_file_paths: paths relative to .dist-info/licenses/ for License-File (PEP 639).
+def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
+    """Build Core Metadata in RFC 822 format (shared by METADATA and PKG-INFO).
+    metadata: [project] section from pyproject.toml.
+    project_dir: project root for resolving readme/license/dynamic paths.
+    StandardMetadata emits License-File with source-relative paths; same string for wheel and sdist
+    (wheel: files under .dist-info/licenses/<path>; sdist: files at archive root).
     """
-    metadata_path = dist_info_dir / "METADATA"
-    # StandardMetadata rejects project.version if project.dynamic contains
-    # "version". We resolved it, so remove from dynamic.
     project = dict(metadata)
     dynamic = project.get("dynamic")
     if isinstance(dynamic, list) and "version" in dynamic:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    with metadata_path.open("w", encoding="utf-8") as f:
-        f.write(str(std_metadata.as_rfc822()))
-    # PEP 639: add License-File entries so installers know where license files are
-    if license_file_paths:
-        with metadata_path.open("a", encoding="utf-8") as f:
-            for p in license_file_paths:
-                # Paths use forward slash per PEP 639
-                p_slash = p.replace("\\", "/")
-                f.write(f"License-File: {p_slash}\n")
+    return str(std_metadata.as_rfc822())
+
+
+def _write_metadata_file(
+    dist_info_dir: Path,
+    metadata: dict,
+    project_dir: Path,
+):
+    """Write the METADATA file to dist-info directory.
+    project_dir is used to resolve readme/license/dynamic paths.
+    License-File is emitted by StandardMetadata (same path as PKG-INFO; files go under .dist-info/licenses/).
+    """
+    metadata_path = dist_info_dir / "METADATA"
+    content = _get_core_metadata_rfc822(metadata, project_dir)
+    metadata_path.write_text(content, encoding="utf-8")
 
 
 def _expand_license_patterns(project_dir: Path, patterns: List[str]) -> List[Path]:
@@ -281,13 +281,11 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy license files first so we can add License-File to METADATA (PEP 639)
+    # Copy license files to .dist-info/licenses/<path> (PEP 639); StandardMetadata emits License-File in METADATA
     patterns = _get_license_files_patterns(metadata)
-    license_file_paths = _copy_license_files(dist_info_dir, project_dir, patterns)
+    _copy_license_files(dist_info_dir, project_dir, patterns)
 
-    _write_metadata_file(
-        dist_info_dir, metadata, project_dir, license_file_paths=license_file_paths
-    )
+    _write_metadata_file(dist_info_dir, metadata, project_dir)
 
     return dist_info_dir
 
@@ -550,19 +548,11 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
-        pkg_info_lines = [
-            "Metadata-Version: 2.1",
-            f"Name: {name}",
-            f"Version: {version}",
-        ]
-        if "description" in project_metadata:
-            pkg_info_lines.append(f"Summary: {project_metadata['description']}")
-        # PEP 639: License-File in sdist PKG-INFO (paths are under source_dir by construction)
-        resolved = source_dir.resolve()
-        for p in _expand_license_patterns(source_dir, _get_license_files_patterns(project_metadata)):
-            pkg_info_lines.append(f"License-File: {p.relative_to(resolved).as_posix()}")
-
-        pkg_info_data = "\n".join(pkg_info_lines).encode("utf-8")
+        # Same core metadata as METADATA (wheel); StandardMetadata emits License-File with source-relative paths
+        pkg_info_content = _get_core_metadata_rfc822(project_metadata, source_dir)
+        if pkg_info_content and not pkg_info_content.endswith("\n"):
+            pkg_info_content += "\n"
+        pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)
         tar.addfile(pkg_info_file, io.BytesIO(pkg_info_data))
