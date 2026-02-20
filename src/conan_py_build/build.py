@@ -192,7 +192,10 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
         project["dynamic"] = [f for f in dynamic if f != "version"]
     pyproject = {"project": project}
     std_metadata = StandardMetadata.from_pyproject(pyproject, project_dir=project_dir)
-    return str(std_metadata.as_rfc822())
+    content = str(std_metadata.as_rfc822())
+    if content and not content.endswith("\n"):
+        content += "\n"
+    return content
 
 
 def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
@@ -478,12 +481,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             tar.add(file_path, arcname=arcname)
 
         # Same core metadata as METADATA (wheel); single source of truth via StandardMetadata.
-        # Ensure resolved name/version are in the dict (required when dynamic = ["version"]).
-        project_metadata["name"] = name
-        project_metadata["version"] = version
-        pkg_info_content = _get_core_metadata_rfc822(project_metadata, source_dir)
-        if pkg_info_content and not pkg_info_content.endswith("\n"):
-            pkg_info_content += "\n"
+        sdist_md = dict(project_metadata)
+        sdist_md["name"] = name
+        sdist_md["version"] = version
+        pkg_info_content = _get_core_metadata_rfc822(sdist_md, source_dir)
         pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)
