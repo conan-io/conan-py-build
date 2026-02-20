@@ -198,10 +198,12 @@ def _get_core_metadata_rfc822(metadata: dict, project_dir: Path) -> str:
 def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path):
     """Write the METADATA file to dist-info directory.
     project_dir is used to resolve readme/license/dynamic paths.
+    Use newline='\\n' so METADATA has Unix line endings on all platforms (matches sdist PKG-INFO).
     """
     metadata_path = dist_info_dir / "METADATA"
     content = _get_core_metadata_rfc822(metadata, project_dir)
-    metadata_path.write_text(content, encoding="utf-8")
+    with metadata_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
 
 
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
@@ -475,7 +477,13 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             arcname = f"{sdist_name}/{rel_path.as_posix()}"
                             tar.add(file_path, arcname=arcname)
 
+        # Same core metadata as METADATA (wheel); single source of truth via StandardMetadata.
+        # Ensure resolved name/version are in the dict (required when dynamic = ["version"]).
+        project_metadata["name"] = name
+        project_metadata["version"] = version
         pkg_info_content = _get_core_metadata_rfc822(project_metadata, source_dir)
+        if pkg_info_content and not pkg_info_content.endswith("\n"):
+            pkg_info_content += "\n"
         pkg_info_data = pkg_info_content.encode("utf-8")
         pkg_info_file = tarfile.TarInfo(name=f"{sdist_name}/PKG-INFO")
         pkg_info_file.size = len(pkg_info_data)
