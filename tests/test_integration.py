@@ -30,6 +30,8 @@ from conan.tools.cmake import cmake_layout
 
 
 class Pkg(ConanFile):
+    name = "integration_pkg"
+    version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
 
