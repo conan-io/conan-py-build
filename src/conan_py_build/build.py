@@ -336,16 +336,6 @@ def _package_folder_from_export_pkg_json(data: dict) -> Optional[str]:
         return None
 
 
-_CONAN_PKG_META = {"conaninfo.txt", "conanmanifest.txt"}
-
-
-def _copy_package_to_staging(pkg_path: Path, staging_dir: Path) -> None:
-    """Copy package folder into staging_dir, excluding Conan metadata files."""
-    def _ignore(_, names):
-        return [n for n in names if n in _CONAN_PKG_META]
-    shutil.copytree(pkg_path, staging_dir, ignore=_ignore, dirs_exist_ok=True)
-
-
 def _do_build_wheel(
     source_dir: Path,
     base_dir: Path,
@@ -431,7 +421,11 @@ def _do_build_wheel(
         raise RuntimeError(f"conan export-pkg failed: {e}") from e
 
     pkg_path = Path(api.cache.package_path(export_result["graph"].root.pref))
-    _copy_package_to_staging(pkg_path, staging_dir)
+    shutil.copytree(
+        pkg_path, staging_dir,
+        ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
+        dirs_exist_ok=True,
+    )
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)
