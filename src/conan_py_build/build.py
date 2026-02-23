@@ -336,6 +336,16 @@ def _package_folder_from_export_pkg_json(data: dict) -> Optional[str]:
         return None
 
 
+_CONAN_PKG_META = {"conaninfo.txt", "conanmanifest.txt"}
+
+
+def _copy_package_to_staging(pkg_path: Path, staging_dir: Path) -> None:
+    """Copy package folder into staging_dir, excluding Conan metadata files."""
+    def _ignore(_, names):
+        return [n for n in names if n in _CONAN_PKG_META]
+    shutil.copytree(pkg_path, staging_dir, ignore=_ignore, dirs_exist_ok=True)
+
+
 def _do_build_wheel(
     source_dir: Path,
     base_dir: Path,
@@ -399,7 +409,6 @@ def _do_build_wheel(
     deps_graph = result.get("graph")
     conanfile = deps_graph.root.conanfile
 
-    # Export package to cache (runs package()); then get package folder from graph + cache API
     print("Running conan export-pkg...", flush=True)
     try:
         export_result = api.command.run(
@@ -421,40 +430,8 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"conan export-pkg failed: {e}") from e
 
-    # Debug: print full graph (same structure as export-pkg -f json)
-    _graph = export_result.get("graph")
-    if _graph:
-        _serial = _graph.serialize()
-        print("======== export-pkg graph (full) ========", flush=True)
-        print(json.dumps({"graph": _serial}, indent=2), flush=True)
-        print("=========================================", flush=True)
-
-    pkg_graph = export_result.get("graph")
-    if not pkg_graph or not pkg_graph.root:
-        raise RuntimeError("export-pkg did not return a graph; cannot get package folder.")
-    pref = pkg_graph.root.pref
-    if not pref:
-        raise RuntimeError("export-pkg graph root has no package reference.")
-    pkg_folder = api.cache.package_path(pref)
-
-    if not pkg_folder or not Path(pkg_folder).is_dir():
-        raise RuntimeError(
-            "export-pkg did not return package_folder; cannot copy to wheel staging."
-        )
-    pkg_path = Path(pkg_folder)
-    wheel_pkgs = _get_wheel_packages(source_dir, name)
-    subdir = wheel_pkgs[0].name if wheel_pkgs else None
-    src = pkg_path / subdir if subdir else pkg_path
-    if src.is_dir():
-        dst = staging_dir / subdir if subdir else staging_dir
-        dst.mkdir(parents=True, exist_ok=True)
-        for entry in os.listdir(src):
-            s = src / entry
-            d = dst / entry
-            if s.is_dir():
-                shutil.copytree(s, d, dirs_exist_ok=True)
-            else:
-                shutil.copy2(s, d)
+    pkg_path = Path(api.cache.package_path(export_result["graph"].root.pref))
+    _copy_package_to_staging(pkg_path, staging_dir)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)
