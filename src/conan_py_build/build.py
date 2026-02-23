@@ -418,7 +418,7 @@ def _do_build_wheel(
             ]
         )
     except Exception as e:
-        raise RuntimeError(f"conan export-pkg failed: {e}") from e
+        raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
     pkg_path = Path(api.cache.package_path(export_result["graph"].root.pref))
     shutil.copytree(
