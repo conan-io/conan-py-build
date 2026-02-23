@@ -63,3 +63,7 @@ recipes/cpython/test_package/*.sh
 recipes/cpython/test_package/*.bat
 recipes/cpython/test_package/*.ps1
 examples/basic-pybind11/*build*/
+conanbuild*.sh
+conanrun*.sh
+deactivate_conanbuild*.sh
+deactivate_conanrun*.sh

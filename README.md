@@ -28,7 +28,7 @@ name = "mypackage"
 version = "0.1.0"
 ```
 
-2. Create a `conanfile.py` with your C++ dependencies and build logic. Your `CMakeLists.txt` must use `install(TARGETS ... DESTINATION <package_name>)` so extensions end up in the wheel:
+2. Create a `conanfile.py` with your C++ dependencies and build logic. Use `build()` for configure/build and `package()` for install (so `cmake.install()` goes in `package()`). Your `CMakeLists.txt` must use `install(TARGETS ... DESTINATION <package_name>)`. The backend runs `conan build`, then `conan export-pkg --format json`, and copies the cache package folder into the wheel staging dir.
 
 ```python
 from conan import ConanFile
@@ -48,6 +48,9 @@ class MyPackageConan(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+
+    def package(self):
+        cmake = CMake(self)
         cmake.install()
 ```
 

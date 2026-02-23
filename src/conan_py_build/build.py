@@ -1,5 +1,6 @@
 import ast
 import io
+import json
 import os
 import shutil
 import tarfile
@@ -324,6 +325,17 @@ def _get_wheel_packages(
     return [_check_wheel_package_path(source_dir, f"src/{name}")]
 
 
+def _package_folder_from_export_pkg_json(data: dict) -> Optional[str]:
+    """Root node package_folder from export-pkg --format json."""
+    try:
+        g = data.get("graph") or data
+        nodes, root = g.get("nodes") or {}, g.get("root") or {}
+        nid = next(iter(root)) if root else "0"
+        return (nodes.get(nid) or {}).get("package_folder")
+    except (AttributeError, KeyError, StopIteration):
+        return None
+
+
 def _do_build_wheel(
     source_dir: Path,
     base_dir: Path,
@@ -360,21 +372,18 @@ def _do_build_wheel(
         print("Detecting default Conan profile...", flush=True)
         api.command.run(["profile", "detect", "--force"])
 
+    output_folder = str(base_dir)
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
         flush=True,
     )
-    # -of staging_dir: conanfile.package_folder = staging_dir, so
-    # cmake.install() installs there. 
-    # -c build_folder: build tree goes to
-    # base_dir/build, not inside staging.
     try:
         result = api.command.run(
             [
                 "build",
                 ".",
                 "-of",
-                str(staging_dir),
+                output_folder,
                 "-c",
                 build_folder_conf,
                 "-c",
@@ -388,13 +397,70 @@ def _do_build_wheel(
         raise RuntimeError(f"Conan build failed: {e}") from e
 
     deps_graph = result.get("graph")
+    conanfile = deps_graph.root.conanfile
+
+    # Export package to cache (runs package()); then get package folder from graph + cache API
+    print("Running conan export-pkg...", flush=True)
+    try:
+        export_result = api.command.run(
+            [
+                "export-pkg",
+                str(source_dir),
+                "-of",
+                output_folder,
+                "-tf",
+                "",
+                "-c",
+                build_folder_conf,
+                "-c",
+                user_presets_conf,
+                f"-pr:h={host_profile}",
+                f"-pr:b={build_profile}",
+            ]
+        )
+    except Exception as e:
+        raise RuntimeError(f"conan export-pkg failed: {e}") from e
+
+    # Debug: print full graph (same structure as export-pkg -f json)
+    _graph = export_result.get("graph")
+    if _graph:
+        _serial = _graph.serialize()
+        print("======== export-pkg graph (full) ========", flush=True)
+        print(json.dumps({"graph": _serial}, indent=2), flush=True)
+        print("=========================================", flush=True)
+
+    pkg_graph = export_result.get("graph")
+    if not pkg_graph or not pkg_graph.root:
+        raise RuntimeError("export-pkg did not return a graph; cannot get package folder.")
+    pref = pkg_graph.root.pref
+    if not pref:
+        raise RuntimeError("export-pkg graph root has no package reference.")
+    pkg_folder = api.cache.package_path(pref)
+
+    if not pkg_folder or not Path(pkg_folder).is_dir():
+        raise RuntimeError(
+            "export-pkg did not return package_folder; cannot copy to wheel staging."
+        )
+    pkg_path = Path(pkg_folder)
+    wheel_pkgs = _get_wheel_packages(source_dir, name)
+    subdir = wheel_pkgs[0].name if wheel_pkgs else None
+    src = pkg_path / subdir if subdir else pkg_path
+    if src.is_dir():
+        dst = staging_dir / subdir if subdir else staging_dir
+        dst.mkdir(parents=True, exist_ok=True)
+        for entry in os.listdir(src):
+            s = src / entry
+            d = dst / entry
+            if s.is_dir():
+                shutil.copytree(s, d, dirs_exist_ok=True)
+            else:
+                shutil.copy2(s, d)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)
 
     # Build wheel using distlib. Apply Conan's buildenv to get cross-compile
     # wheel tags from [buildenv]
-    conanfile = deps_graph.root.conanfile
     buildenv = VirtualBuildEnv(conanfile)
     env_vars = buildenv.environment().vars(conanfile)
 
