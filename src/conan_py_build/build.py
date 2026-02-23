@@ -420,6 +420,7 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
+    # copy from package folder in the local cache to the staging directory
     pkg_path = Path(api.cache.package_path(export_result["graph"].root.pref))
     shutil.copytree(
         pkg_path, staging_dir,
