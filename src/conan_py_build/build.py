@@ -369,7 +369,7 @@ def _do_build_wheel(
         result = api.command.run(
             [
                 "build",
-                ".",
+                str(source_dir),
                 "-of",
                 output_folder,
                 "-c",
