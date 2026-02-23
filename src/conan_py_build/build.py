@@ -409,8 +409,7 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
-    # copy from package folder in the local cache to the staging directory
-    pkg_path = Path(api.cache.package_path(export_result["graph"].root.pref))
+    pkg_path = Path(export_result["graph"]["nodes"]["0"]["package_folder"])
     shutil.copytree(
         pkg_path, staging_dir,
         ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
