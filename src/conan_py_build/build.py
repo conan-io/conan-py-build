@@ -325,17 +325,6 @@ def _get_wheel_packages(
     return [_check_wheel_package_path(source_dir, f"src/{name}")]
 
 
-def _package_folder_from_export_pkg_json(data: dict) -> Optional[str]:
-    """Root node package_folder from export-pkg --format json."""
-    try:
-        g = data.get("graph") or data
-        nodes, root = g.get("nodes") or {}, g.get("root") or {}
-        nid = next(iter(root)) if root else "0"
-        return (nodes.get(nid) or {}).get("package_folder")
-    except (AttributeError, KeyError, StopIteration):
-        return None
-
-
 def _do_build_wheel(
     source_dir: Path,
     base_dir: Path,
