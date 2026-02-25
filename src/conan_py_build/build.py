@@ -291,6 +291,41 @@ def build_wheel(
         )
 
 
+def build_editable(
+    wheel_directory: str,
+    config_settings: Optional[dict] = None,
+    metadata_directory: Optional[str] = None,
+) -> str:
+    """
+    PEP 660 hook: Build an editable wheel.
+    """
+    print("WARNING: Editable install: building a normal wheel (no live reload of C++ extensions).")
+    return build_wheel(wheel_directory, config_settings, metadata_directory)
+
+
+def get_requires_for_build_editable(config_settings: Optional[dict] = None) -> list:
+    """
+    PEP 660 hook: Return additional dependencies needed to build an editable wheel.
+    """
+    return []
+
+
+def prepare_metadata_for_build_editable(
+    metadata_directory: str,
+    config_settings: Optional[dict] = None,
+) -> str:
+    """
+    PEP 660 hook: Prepare metadata for an editable wheel without building it.
+    """
+    meta_dir = Path(metadata_directory)
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    source_dir = Path.cwd()
+    project_metadata = _get_project_metadata(source_dir)
+    _resolve_version(project_metadata, source_dir)
+    dist_info_dir = _create_dist_info(meta_dir, project_metadata, source_dir)
+    return dist_info_dir.name
+
+
 def _check_wheel_package_path(source_dir: Path, wheel_package: str) -> Path:
     source_resolved = source_dir.resolve()
     package_dir = (source_dir / wheel_package).resolve()
