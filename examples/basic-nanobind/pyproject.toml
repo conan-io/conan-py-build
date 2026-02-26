@@ -8,3 +8,6 @@ version = "0.1.0"
 description = "A simple Python package with C++ code (nanobind) that adds two numbers"
 license = "MIT"
 requires-python = ">=3.8"
+
+[tool.conan-py-build]
+profile = "cpp17.profile"
