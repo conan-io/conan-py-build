@@ -4,9 +4,6 @@
 {% set wheel_arch = "win_amd64" if platform.machine() in ("AMD64", "x86_64") else "win32" %}
 include(default)
 
-[settings]
-compiler.cppstd=17
-
 [tool_requires]
 &:{{ cpython_ref }}
 
