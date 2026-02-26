@@ -362,13 +362,15 @@ def _do_build_wheel(
         build_profile,
     ]
     tool = _get_tool_config(source_dir)
+
     for key, val in tool.items():
-        if "profile" not in key or not val or not isinstance(val, str):
+        if not key.startswith("extra-profile") or not val or not isinstance(val, str):
             continue
         p = (source_dir / val).resolve()
         if not p.is_file():
             continue
-        profile_args.extend([f"--{key}", str(p)])
+        arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
+        profile_args.extend([f"--{arg}", str(p)])
 
     # Auto-detect default profile if using defaults
     if host_profile == "default" or build_profile == "default":

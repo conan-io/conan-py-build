@@ -10,4 +10,4 @@ license = "MIT"
 requires-python = ">=3.8"
 
 [tool.conan-py-build]
-profile = "cpp17.profile"
+extra-profile = "cpp17.profile"
