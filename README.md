@@ -123,9 +123,11 @@ exclude = [".github", "scripts", "README.md"]
 
 ### Profiles
 
-Jinja profiles in `examples/profiles/`: `include(default)` + wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version (e.g. `3.12.12`).
-
-Example:
+Host and build profiles are set via `--config-settings` (see table above):
+`host-profile` and `build-profile`, defaulting to Conan’s `default` profile.
+Example with Jinja profiles from `examples/profiles/` (`include(default)` +
+wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version, e.g.
+`3.12.12`):
 
 ```bash
 export CONAN_CPYTHON_VERSION=3.12.12
@@ -133,6 +135,22 @@ pip wheel . --no-build-isolation \
     --config-settings="host-profile=examples/profiles/linux.jinja" \
     --config-settings="build-dir=./build" \
     -w dist/
+```
+
+**Extra profile in `pyproject.toml`.** You can add one extra Conan profile file
+via `[tool.conan-py-build].extra-profile`. It is **composed on top of** the
+profiles applied first (default or those passed via `-C`). The extra profile is
+applied last, so it lets you override values. For example, if your extension
+needs at least C++17, put `compiler.cppstd=17` in a profile file and set
+`extra-profile = "cpp17.profile"` so that override is applied on top of the
+default or CI profile.
+
+Keys: `extra-profile`, `extra-profile-host`, `extra-profile-build`,
+`extra-profile-all`. Path relative to project root.
+
+```toml
+[tool.conan-py-build]
+extra-profile = "cpp17.profile"
 ```
 
 ## Examples

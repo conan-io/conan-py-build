@@ -355,56 +355,71 @@ def _do_build_wheel(
     host_profile = config["host_profile"]
     build_profile = config["build_profile"]
 
+    profile_args = [
+        "--profile:host",
+        host_profile,
+        "--profile:build",
+        build_profile,
+    ]
+    tool = _get_tool_config(source_dir)
+
+    for key, val in tool.items():
+        if not key.startswith("extra-profile") or not val or not isinstance(val, str):
+            continue
+        p = (source_dir / val).resolve()
+        if not p.is_file():
+            continue
+        arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
+        profile_args.extend([f"--{arg}", str(p)])
+
     # Auto-detect default profile if using defaults
     if host_profile == "default" or build_profile == "default":
         print("Detecting default Conan profile...", flush=True)
         api.command.run(["profile", "detect", "--force"])
 
-    output_folder = str(base_dir)
+    build_cmd = [
+        "build",
+        ".",
+        "-of",
+        str(staging_dir),
+        "-c",
+        build_folder_conf,
+        "-c",
+        user_presets_conf,
+        "--build=missing",
+    ]
+    build_cmd.extend(profile_args)
+
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
         flush=True,
     )
     try:
-        result = api.command.run(
-            [
-                "build",
-                str(source_dir),
-                "-of",
-                output_folder,
-                "-c",
-                build_folder_conf,
-                "-c",
-                user_presets_conf,
-                "--build=missing",
-                f"-pr:h={host_profile}",
-                f"-pr:b={build_profile}",
-            ]
-        )
+        build_result = api.command.run(build_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
 
-    deps_graph = result.get("graph")
-    conanfile = deps_graph.root.conanfile
-
     print("Running conan export-pkg...", flush=True)
+    
+    deps_graph = build_result.get("graph")
+    conanfile = deps_graph.root.conanfile
+    
+    export_pkg_cmd = [
+        "export-pkg",
+        str(source_dir),
+        "-of",
+        output_folder,
+        "-tf",
+        "",
+        "-c",
+        build_folder_conf,
+        "-c",
+        user_presets_conf,
+        f"-pr:h={host_profile}",
+        f"-pr:b={build_profile}",
+    ]
     try:
-        export_result = api.command.run(
-            [
-                "export-pkg",
-                str(source_dir),
-                "-of",
-                output_folder,
-                "-tf",
-                "",
-                "-c",
-                build_folder_conf,
-                "-c",
-                user_presets_conf,
-                f"-pr:h={host_profile}",
-                f"-pr:b={build_profile}",
-            ]
-        )
+        export_result = api.command.run(export_pkg_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
