@@ -415,9 +415,8 @@ def _do_build_wheel(
         build_folder_conf,
         "-c",
         user_presets_conf,
-        f"-pr:h={host_profile}",
-        f"-pr:b={build_profile}",
     ]
+    export_pkg_cmd.extend(profile_args)
     try:
         export_result = api.command.run(export_pkg_cmd)
     except Exception as e:
