@@ -2,15 +2,19 @@ import ast
 import io
 import os
 import shutil
+import fnmatch
+import filecmp
 import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional
 
+from conan.errors import ConanException
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
+from conan.tools.files import copy
 from distlib.wheel import Wheel
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
@@ -379,13 +383,12 @@ def _do_build_wheel(
                 "--build=missing",
                 f"-pr:h={host_profile}",
                 f"-pr:b={build_profile}",
+                "-o=*:shared=True",
             ]
         )
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
 
-    deps_graph = result.get("graph")
-    conanfile = deps_graph.root.conanfile
 
     print("Running conan export-pkg...", flush=True)
     try:
@@ -403,17 +406,42 @@ def _do_build_wheel(
                 user_presets_conf,
                 f"-pr:h={host_profile}",
                 f"-pr:b={build_profile}",
+                "-o=*:shared=True",
             ]
         )
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
-    pkg_path = Path(export_result["graph"].serialize()["nodes"]["0"]["package_folder"])
-    shutil.copytree(
-        pkg_path, staging_dir,
-        ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
-        dirs_exist_ok=True,
-    )
+    deps_graph = export_result.get("graph")
+    conanfile = deps_graph.root.conanfile
+
+    # TODO, move this to a file, so that we can override it
+    def wheel_deploy(graph, output_path):
+        is_root = True
+        for node in graph.nodes:
+            dep = node.conanfile
+            if dep.package_folder is None:
+                continue
+            if node.context == "build":
+                continue
+            if dep.ref.matches("fmt*", None):
+                print("Skipping fmt/12.1.0 deployment due to known wheel issues with this version")
+                continue
+            cpp_info = dep.cpp_info.aggregated_components()
+            dirs = cpp_info.libdirs + cpp_info.bindirs
+            if is_root:
+                copy(dep, "**.so", src=dep.package_folder, dst=output_path, keep_path=True)
+                copy(dep, "**.dylib", src=dep.package_folder, dst=output_path, keep_path=True)
+                copy(dep, "**.dll", src=dep.package_folder, dst=output_path, keep_path=True)
+            else:
+                for d in dirs:
+                    if not os.path.exists(d):
+                        continue
+                    shutil.copytree(d, output_path, dirs_exist_ok=True)
+            is_root = False
+
+    # TODO: Change this for api call, so that we can override it
+    wheel_deploy(deps_graph, staging_dir)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)
