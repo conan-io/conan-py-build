@@ -1,0 +1,13 @@
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder-nanobind"
+version = "0.1.0"
+description = "A simple Python package with C++ code (nanobind) that adds two numbers"
+license = "MIT"
+requires-python = ">=3.8"
+
+[tool.conan-py-build]
+extra-profile = "cpp17.profile"

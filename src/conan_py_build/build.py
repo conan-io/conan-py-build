@@ -367,10 +367,40 @@ def _do_build_wheel(
     host_profile = config["host_profile"]
     build_profile = config["build_profile"]
 
+    profile_args = [
+        "--profile:host",
+        host_profile,
+        "--profile:build",
+        build_profile,
+    ]
+    tool = _get_tool_config(source_dir)
+
+    for key, val in tool.items():
+        if not key.startswith("extra-profile") or not val or not isinstance(val, str):
+            continue
+        p = (source_dir / val).resolve()
+        if not p.is_file():
+            continue
+        arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
+        profile_args.extend([f"--{arg}", str(p)])
+
     # Auto-detect default profile if using defaults
     if host_profile == "default" or build_profile == "default":
         print("Detecting default Conan profile...", flush=True)
         api.command.run(["profile", "detect", "--force"])
+
+    build_cmd = [
+        "build",
+        ".",
+        "-of",
+        str(staging_dir),
+        "-c",
+        build_folder_conf,
+        "-c",
+        user_presets_conf,
+        "--build=missing",
+    ]
+    build_cmd.extend(profile_args)
 
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
@@ -381,21 +411,7 @@ def _do_build_wheel(
     # -c build_folder: build tree goes to
     # base_dir/build, not inside staging.
     try:
-        result = api.command.run(
-            [
-                "build",
-                ".",
-                "-of",
-                str(staging_dir),
-                "-c",
-                build_folder_conf,
-                "-c",
-                user_presets_conf,
-                "--build=missing",
-                f"-pr:h={host_profile}",
-                f"-pr:b={build_profile}",
-            ]
-        )
+        result = api.command.run(build_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
 
