@@ -408,7 +408,7 @@ def _do_build_wheel(
         "export-pkg",
         str(source_dir),
         "-of",
-        output_folder,
+        str(staging_dir),
         "-tf",
         "",
         "-c",
