@@ -102,6 +102,12 @@ jobs:
           python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
           python -c "import myadder_nanobind; assert myadder_nanobind.add(2, 3) == 5; assert myadder_nanobind.add_integers(10, 20) == 30; assert myadder_nanobind.greet('World').startswith('Hello'); print('myadder_nanobind OK')"
         shell: bash
+      - name: Test editable package
+        run: |
+          pip uninstall -y myadder_pybind11
+          pip install -e examples/basic-pybind11 --no-build-isolation
+          python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; assert myadder_pybind11.add_integers(10, 20) == 30; assert myadder_pybind11.greet('World').startswith('Hello'); print('myadder_pybind11 OK')"
+        shell: bash
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
