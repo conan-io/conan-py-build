@@ -357,7 +357,7 @@ def _do_build_wheel(
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
-    # Use isolated Conan home (~/.conan-py-build) only when CONAN_HOME is not set
+    # Use isolated Conan home (~/.conan-py-build) when CONAN_HOME is not set
     using_isolated_conan_home = False
     if not os.environ.get("CONAN_HOME"):
         conan_home = Path.home() / ".conan-py-build"
