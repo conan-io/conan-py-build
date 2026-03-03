@@ -357,9 +357,14 @@ def _do_build_wheel(
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
+    # Use isolated Conan home (~/.conan-py-build) only when CONAN_HOME is not set
+    using_isolated_conan_home = False
+    if not os.environ.get("CONAN_HOME"):
+        conan_home = Path.home() / ".conan-py-build"
+        conan_home.mkdir(parents=True, exist_ok=True)
+        os.environ["CONAN_HOME"] = str(conan_home)
+        using_isolated_conan_home = True
 
-    # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
-    # directory
     api = ConanAPI()
     cli = Cli(api)
     cli.add_commands()
@@ -373,6 +378,7 @@ def _do_build_wheel(
         "--profile:build",
         build_profile,
     ]
+
     tool = _get_tool_config(source_dir)
 
     for key, val in tool.items():
@@ -387,7 +393,8 @@ def _do_build_wheel(
     # Auto-detect default profile if using defaults
     if host_profile == "default" or build_profile == "default":
         print("Detecting default Conan profile...", flush=True)
-        api.command.run(["profile", "detect", "--force"])
+        detect_flag = "--force" if using_isolated_conan_home else "--exist-ok"
+        api.command.run(["profile", "detect", detect_flag])
 
     build_cmd = [
         "build",
