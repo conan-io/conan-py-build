@@ -6,7 +6,7 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
@@ -166,6 +166,34 @@ def _parse_config(config_settings: Optional[dict]) -> dict:
         "build_profile": config.get("build-profile") or "default",
         "build_dir": config.get("build-dir"),
     }
+
+
+def _autodetect_profile() -> bool:
+    """True if CONAN_PY_BUILD_PROFILE_AUTODETECT is set (1, true, yes). Use local profile instead of Conan default."""
+    env_val = os.environ.get("CONAN_PY_BUILD_PROFILE_AUTODETECT", "").strip().lower()
+    return env_val in ("1", "true", "yes")
+
+
+def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
+    if host_profile != "default" or build_profile != "default":
+        return host_profile, build_profile
+    use_local_auto_profile = _autodetect_profile()
+    if use_local_auto_profile:
+        path = (source_dir / "conan-py-build.profile").resolve()
+        print(f"Autodetect Conan profile: Using local profile: {path}", flush=True)
+        host_profile = build_profile = str(path)
+    else:
+        path = Path(conan_api.config.home()) / "profiles" / "default"
+    if use_local_auto_profile or not path.is_file():
+        detected = conan_api.profiles.detect()
+        if (detected.settings or {}).get("compiler") is None:
+            raise RuntimeError(
+                "No compiler detected. Install a C/C++ toolchain (e.g. Visual Studio on Windows, "
+                "Xcode on macOS, gcc/clang on Linux) and try again."
+            )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(detected.dumps())
+    return host_profile, build_profile
 
 
 @contextmanager
@@ -357,15 +385,13 @@ def _do_build_wheel(
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
-
-    # TODO: Consider isolating builds by setting CONAN_HOME to a temporary
-    # directory
-    api = ConanAPI()
-    cli = Cli(api)
+    conan_api = ConanAPI()
+    cli = Cli(conan_api)
     cli.add_commands()
 
-    host_profile = config["host_profile"]
-    build_profile = config["build_profile"]
+    host_profile, build_profile = _resolve_default_profiles(
+        conan_api, source_dir, config["host_profile"], config["build_profile"]
+    )
 
     profile_args = [
         "--profile:host",
@@ -373,6 +399,7 @@ def _do_build_wheel(
         "--profile:build",
         build_profile,
     ]
+
     tool = _get_tool_config(source_dir)
 
     for key, val in tool.items():
@@ -384,10 +411,6 @@ def _do_build_wheel(
         arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
         profile_args.extend([f"--{arg}", str(p)])
 
-    # Auto-detect default profile if using defaults
-    if host_profile == "default" or build_profile == "default":
-        print("Detecting default Conan profile...", flush=True)
-        api.command.run(["profile", "detect", "--force"])
 
     build_cmd = [
         "build",
@@ -407,7 +430,7 @@ def _do_build_wheel(
         flush=True,
     )
     try:
-        build_result = api.command.run(build_cmd)
+        build_result = conan_api.command.run(build_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
 
@@ -430,7 +453,7 @@ def _do_build_wheel(
     ]
     export_pkg_cmd.extend(profile_args)
     try:
-        export_result = api.command.run(export_pkg_cmd)
+        export_result = conan_api.command.run(export_pkg_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 

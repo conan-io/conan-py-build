@@ -72,6 +72,15 @@ Pass configuration options via `--config-settings`:
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
+### Conan home and profile
+
+The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the one set via 
+`CONAN_HOME` or the `.conanrc` file.
+
+By default the backend uses Conan's **default** profile. To use an autodetected
+profile, set
+**`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`** (or `true` / `yes`).
+
 ### Dynamic version
 
 There is limited support for dynamic version: set `dynamic = ["version"]` in
