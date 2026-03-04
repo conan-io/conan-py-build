@@ -80,7 +80,7 @@ The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the on
 By default it uses Conan's existing default profile in that home (creating it with
 `conan profile detect --exist-ok` if missing). To use a local profile instead so the
 global default and cache are left unchanged, set **`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`**
-(or `true` / `yes`); the backend will then create and use `./conan-py-build.profile`.
+(or `true` / `yes`).
 
 ### Dynamic version
 
