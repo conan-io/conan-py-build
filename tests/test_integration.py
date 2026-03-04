@@ -60,7 +60,7 @@ def integration_project(tmp_path, monkeypatch):
     monkeypatch.chdir(dest)
     conan_home = tmp_path / "conan_home"
     monkeypatch.setenv("CONAN_HOME", str(conan_home))
-    return types.SimpleNamespace(work_dir=tmp_path)
+    return types.SimpleNamespace(work_dir=tmp_path, project_dir=dest)
 
 
 def test_build_sdist_produces_tarball(integration_project):
@@ -131,8 +131,7 @@ def test_build_wheel_integration(integration_project):
 
 def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     """With CONAN_PY_BUILD_PROFILE_AUTODETECT=1 a local profile is created; by default Conan default is used."""
-    proj_dir = Path.cwd()
-    profile_path = proj_dir / "conan-py-build.profile"
+    profile_path = integration_project.project_dir / "conan-py-build.profile"
     wheel_dir = integration_project.work_dir / "dist"
     wheel_dir.mkdir()
 

@@ -177,23 +177,22 @@ def _autodetect_profile() -> bool:
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
     if host_profile != "default" or build_profile != "default":
         return host_profile, build_profile
-    if _autodetect_profile():
+    use_local_auto_profile = _autodetect_profile()
+    if use_local_auto_profile:
         path = (source_dir / "conan-py-build.profile").resolve()
         print(f"Autodetect Conan profile: Using local profile: {path}", flush=True)
-        conan_api.command.run(["profile", "detect", "--name", str(path), "--force"])
-        return str(path), str(path)
-    conan_home = Path(conan_api.config.home())
-    default_path = conan_home / "profiles" / "default"
-    if not default_path.is_file():
-        print("Detecting default Conan profile...", flush=True)
+        host_profile = build_profile = str(path)
+    else:
+        path = Path(conan_api.config.home()) / "profiles" / "default"
+    if use_local_auto_profile or not path.is_file():
         detected = conan_api.profiles.detect()
         if (detected.settings or {}).get("compiler") is None:
             raise RuntimeError(
                 "No compiler detected. Install a C/C++ toolchain (e.g. Visual Studio on Windows, "
                 "Xcode on macOS, gcc/clang on Linux) and try again."
             )
-        default_path.parent.mkdir(parents=True, exist_ok=True)
-        default_path.write_text(detected.dumps())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(detected.dumps())
     return host_profile, build_profile
 
 
