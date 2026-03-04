@@ -29,6 +29,7 @@ env/
 .env
 
 # Conan
+conan-py-build.profile
 conan.lock
 conanbuildinfo.*
 conaninfo.txt

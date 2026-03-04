@@ -168,6 +168,12 @@ def _parse_config(config_settings: Optional[dict]) -> dict:
     }
 
 
+def _autodetect_profile() -> bool:
+    """True if CONAN_PY_BUILD_PROFILE_AUTODETECT is set (1, true, yes)."""
+    env_val = os.environ.get("CONAN_PY_BUILD_PROFILE_AUTODETECT", "").strip().lower()
+    return env_val in ("1", "true", "yes")
+
+
 @contextmanager
 def _build_directory(build_dir: Optional[str]):
     """Context manager for build directory - persistent or temporary."""
@@ -357,20 +363,24 @@ def _do_build_wheel(
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
-    # Use isolated Conan home (~/.conan-py-build) when CONAN_HOME is not set
-    using_isolated_conan_home = False
-    if not os.environ.get("CONAN_HOME"):
-        conan_home = Path.home() / ".conan-py-build"
-        conan_home.mkdir(parents=True, exist_ok=True)
-        os.environ["CONAN_HOME"] = str(conan_home)
-        using_isolated_conan_home = True
-
     api = ConanAPI()
     cli = Cli(api)
     cli.add_commands()
 
     host_profile = config["host_profile"]
     build_profile = config["build_profile"]
+
+    if host_profile == "default" and build_profile == "default":
+        if _autodetect_profile():
+            # create a local profile in the project root so we don't touch the user's default profile
+            path = (source_dir / "conan-py-build.profile").resolve()
+            print(f"Autodetect Conan profile: Using local profile: {path}", flush=True)
+            api.command.run(["profile", "detect", "--name", str(path), "--force"])
+            host_profile = build_profile = str(path)
+        else:
+            print("Detecting default Conan profile...", flush=True)
+            api.command.run(["profile", "detect", "--exist-ok"])
+
 
     profile_args = [
         "--profile:host",
@@ -390,11 +400,6 @@ def _do_build_wheel(
         arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
         profile_args.extend([f"--{arg}", str(p)])
 
-    # Auto-detect default profile if using defaults
-    if host_profile == "default" or build_profile == "default":
-        print("Detecting default Conan profile...", flush=True)
-        detect_flag = "--force" if using_isolated_conan_home else "--exist-ok"
-        api.command.run(["profile", "detect", detect_flag])
 
     build_cmd = [
         "build",

@@ -72,12 +72,15 @@ Pass configuration options via `--config-settings`:
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
-### Conan home
+### Conan home and profile
 
-If **`CONAN_HOME`** is not set, the backend uses **`~/.conan-py-build`** (in your user
-home, outside any venv) so that builds do not modify your main Conan cache
-(`~/.conan2`). To use your global Conan cache or another path, set `CONAN_HOME` in
-the environment before building (e.g. `export CONAN_HOME=~/.conan2`).
+The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the one set via 
+`CONAN_HOME` or the `.conanrc` file.
+
+By default it uses Conan's existing default profile in that home (creating it with
+`conan profile detect --exist-ok` if missing). To use a local profile instead so the
+global default and cache are left unchanged, set **`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`**
+(or `true` / `yes`); the backend will then create and use `./conan-py-build.profile`.
 
 ### Dynamic version
 
