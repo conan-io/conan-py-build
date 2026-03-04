@@ -168,9 +168,9 @@ def _parse_config(config_settings: Optional[dict]) -> dict:
     }
 
 
-def _use_default_profile() -> bool:
-    """True if CONAN_PY_BUILD_USE_DEFAULT_PROFILE is set (1, true, yes). Use Conan's default profile instead of local autodetected."""
-    env_val = os.environ.get("CONAN_PY_BUILD_USE_DEFAULT_PROFILE", "").strip().lower()
+def _autodetect_profile() -> bool:
+    """True if CONAN_PY_BUILD_PROFILE_AUTODETECT is set (1, true, yes). Use local profile instead of Conan default."""
+    env_val = os.environ.get("CONAN_PY_BUILD_PROFILE_AUTODETECT", "").strip().lower()
     return env_val in ("1", "true", "yes")
 
 
@@ -371,15 +371,24 @@ def _do_build_wheel(
     build_profile = config["build_profile"]
 
     if host_profile == "default" and build_profile == "default":
-        if _use_default_profile():
-            print("Detecting default Conan profile...", flush=True)
-            api.command.run(["profile", "detect", "--exist-ok"])
-        else:
-            # create a local profile in the project root so we don't touch the user's default profile
+        if _autodetect_profile():
             path = (source_dir / "conan-py-build.profile").resolve()
             print(f"Autodetect Conan profile: Using local profile: {path}", flush=True)
             api.command.run(["profile", "detect", "--name", str(path), "--force"])
             host_profile = build_profile = str(path)
+        else:
+            conan_home = Path(api.config.home())
+            default_path = conan_home / "profiles" / "default"
+            if not default_path.is_file():
+                print("Detecting default Conan profile...", flush=True)
+                detected = api.profiles.detect()
+                if (detected.settings or {}).get("compiler") is None:
+                    raise RuntimeError(
+                        "No compiler detected. Install a C/C++ toolchain (e.g. Visual Studio on Windows, "
+                        "Xcode on macOS, gcc/clang on Linux) and try again."
+                    )
+                default_path.parent.mkdir(parents=True, exist_ok=True)
+                default_path.write_text(detected.dumps())
 
 
     profile_args = [
