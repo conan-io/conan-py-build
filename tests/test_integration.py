@@ -130,17 +130,18 @@ def test_build_wheel_integration(integration_project):
 
 
 def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
+    """By default local profile is created; with CONAN_PY_BUILD_USE_DEFAULT_PROFILE=1 it is not."""
     proj_dir = Path.cwd()
     profile_path = proj_dir / "conan-py-build.profile"
     wheel_dir = integration_project.work_dir / "dist"
     wheel_dir.mkdir()
 
-    monkeypatch.delenv("CONAN_PY_BUILD_PROFILE_AUTODETECT", raising=False)
+    monkeypatch.setenv("CONAN_PY_BUILD_USE_DEFAULT_PROFILE", "1")
     build_wheel(str(wheel_dir), config_settings=None)
-    assert not profile_path.exists(), "conan-py-build.profile must not be created when autodetect is unset"
+    assert not profile_path.exists(), "conan-py-build.profile must not be created when using default profile"
 
-    monkeypatch.setenv("CONAN_PY_BUILD_PROFILE_AUTODETECT", "1")
+    monkeypatch.delenv("CONAN_PY_BUILD_USE_DEFAULT_PROFILE", raising=False)
     build_wheel(str(wheel_dir), config_settings=None)
-    assert profile_path.is_file(), "conan-py-build.profile should be created when autodetect is enabled"
+    assert profile_path.is_file(), "conan-py-build.profile should be created by default"
     content = profile_path.read_text()
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
