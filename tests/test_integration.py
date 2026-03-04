@@ -130,7 +130,6 @@ def test_build_wheel_integration(integration_project):
 
 
 def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
-    """With CONAN_PY_BUILD_PROFILE_AUTODETECT unset, no local profile; with =1, conan-py-build.profile is created."""
     proj_dir = Path.cwd()
     profile_path = proj_dir / "conan-py-build.profile"
     wheel_dir = integration_project.work_dir / "dist"
