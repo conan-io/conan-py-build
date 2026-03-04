@@ -82,7 +82,7 @@ jobs:
         runner: [ubuntu-latest, macos-14, windows-latest]
     runs-on: ${{ matrix.runner }}
     env:
-      CONAN_PY_BUILD_USE_DEFAULT_PROFILE: "1"
+      CONAN_PY_BUILD_PROFILE_AUTODETECT: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
