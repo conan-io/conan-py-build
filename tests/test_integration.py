@@ -38,6 +38,9 @@ class Pkg(ConanFile):
     def layout(self):
         cmake_layout(self)
 
+    def source(self):
+        self.output.info("source_called")
+
     def build(self):
         pass
 """, encoding="utf-8")
@@ -120,13 +123,15 @@ def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
     assert pkg_info.strip() == wheel_metadata.strip(), "PKG-INFO and METADATA must be the same core metadata"
 
 
-def test_build_wheel_integration(integration_project):
+def test_build_wheel_integration(integration_project, capfd):
     """Integration: build_wheel on a real project."""
     wheel_dir = integration_project.work_dir / "wheelhouse"
     wheel_dir.mkdir()
     name = build_wheel(str(wheel_dir), config_settings=None)
     assert name.endswith(".whl")
     assert (wheel_dir / name).is_file()
+    _, err = capfd.readouterr()
+    assert "source_called" in err
 
 
 def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
