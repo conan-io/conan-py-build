@@ -412,6 +412,16 @@ def _do_build_wheel(
         profile_args.extend([f"--{arg}", str(p)])
 
 
+    source_cmd = [
+        "source",
+        "."
+    ]
+    print("Running conan source...", flush=True)
+    try:
+        conan_api.command.run(source_cmd)
+    except Exception as e:
+        raise RuntimeError(f"Conan source failed: {e}") from e
+
     build_cmd = [
         "build",
         ".",

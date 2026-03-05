@@ -70,3 +70,5 @@ conanrun*.sh
 deactivate_conanbuild*.sh
 deactivate_conanrun*.sh
 
+examples/external-sources/my-build/
+examples/external-sources/src/libhello/
