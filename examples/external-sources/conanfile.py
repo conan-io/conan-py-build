@@ -1,8 +1,7 @@
-from pathlib import Path
-
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
 from conan.tools.files import get
+from conan.tools.microsoft import is_msvc
 
 
 class HelloBindingsConan(ConanFile):
@@ -11,6 +10,8 @@ class HelloBindingsConan(ConanFile):
     description = "Python bindings for libhello (C++ code fetched from GitHub)"
     license = "MIT"
     settings = "os", "compiler", "build_type", "arch"
+    options = {"fPIC": [True, False]}
+    default_options = {"fPIC": True}
     generators = "CMakeToolchain", "CMakeDeps"
 
     def layout(self):
