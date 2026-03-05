@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
 from conan.tools.files import get
@@ -19,9 +21,9 @@ class HelloBindingsConan(ConanFile):
         self.requires("fmt/12.1.0")
 
     def source(self):
-        get(self, **self.conan_data["sources"][self.version], 
-            destination="src/libhello",
-            strip_root=True)  
+        get(self, **self.conan_data["sources"][self.version],
+            destination="libhello",
+            strip_root=True)
 
     def build(self):
         cmake = CMake(self)
