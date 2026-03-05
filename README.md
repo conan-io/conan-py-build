@@ -186,7 +186,7 @@ profile, set
 
 See the [examples/](examples/) directory for complete working examples:
 
-- **[basic](examples/basic/)**: Simple Python extension using the `fmt` library; recipe in `conan/` subdirectory (`conanfile-path`)
+- **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
 - **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11 (with dynamic version from `__init__.py`)
 - **[external-sources](examples/external-sources/)**: C++ code fetched in `source()`
 
