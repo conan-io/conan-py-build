@@ -536,12 +536,9 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     tool = _get_tool_config(source_dir)
     conanfile_path = tool.get("conanfile-path") or "."
 
-    if conanfile_path == ".":
-        default_include.append("conanfile.py")
-    elif conanfile_path.endswith(".py"):
-        default_include.append(conanfile_path)
-    else:
-        default_include.append(f"{conanfile_path}/conanfile.py")
+    conan_api = ConanAPI()
+    full_path = conan_api.local.get_conanfile_path(conanfile_path, source_dir, py=True)
+    default_include.append(Path(full_path).relative_to(source_dir).as_posix())
 
     default_exclude = [
         "__pycache__",
