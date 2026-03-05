@@ -39,7 +39,7 @@ class Pkg(ConanFile):
         cmake_layout(self)
 
     def source(self):
-        print("source_called", flush=True)
+        self.output.info("source_called")
 
     def build(self):
         pass
