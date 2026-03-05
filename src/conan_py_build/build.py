@@ -411,11 +411,9 @@ def _do_build_wheel(
         arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
         profile_args.extend([f"--{arg}", str(p)])
 
+    conanfile_path = tool.get("conanfile-path") or "."
 
-    source_cmd = [
-        "source",
-        "."
-    ]
+    source_cmd = ["source", conanfile_path]
     print("Running conan source...", flush=True)
     try:
         conan_api.command.run(source_cmd)
@@ -424,7 +422,7 @@ def _do_build_wheel(
 
     build_cmd = [
         "build",
-        ".",
+        conanfile_path,
         "-of",
         str(staging_dir),
         "-c",
@@ -451,7 +449,7 @@ def _do_build_wheel(
     
     export_pkg_cmd = [
         "export-pkg",
-        str(source_dir),
+        conanfile_path,
         "-of",
         str(staging_dir),
         "-tf",

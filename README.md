@@ -72,14 +72,16 @@ Pass configuration options via `--config-settings`:
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
-### Conan home and profile
+Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
-The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the one set via 
-`CONAN_HOME` or the `.conanrc` file.
-
-By default the backend uses Conan's **default** profile. To use an autodetected
-profile, set
-**`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`** (or `true` / `yes`).
+| Option | Description | Default |
+|--------|-------------|---------|
+| `version-file` | Path to a Python file from which to read `__version__` when `[project].version` is dynamic | (none) |
+| `conanfile-path` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
+| `wheel.packages` | List of paths (relative to project root) of Python packages to include in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_project_name>"]` |
+| `sdist.include` | List of paths or patterns to add to the sdist | `[]` |
+| `sdist.exclude` | List of paths or patterns to exclude from the sdist | `[]` |
+| `extra-profile` | Path (relative to project root) to a Conan profile file | (none) |
 
 ### Dynamic version
 
@@ -104,6 +106,15 @@ You can control which Python packages are included in the wheel via
 If `wheel.packages` is not set, the backend includes a single package at
 `src/<normalized_project_name>` (e.g. `src/mypackage` for a project named
 `mypackage`).
+
+**Conan recipe path.** If your recipe lives outside the project root (e.g.
+`subfolder/conanfile.py`), set `conanfile-path` so the backend runs
+`conan source`, `conan build` and `conan export-pkg` on that path:
+
+```toml
+[tool.conan-py-build]
+conanfile-path = "subfolder"
+```
 
 ```toml
 [tool.conan-py-build.wheel]
@@ -162,11 +173,20 @@ Keys: `extra-profile`, `extra-profile-host`, `extra-profile-build`,
 extra-profile = "cpp17.profile"
 ```
 
+### Conan home and default profile
+
+The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the one set via 
+`CONAN_HOME` or the `.conanrc` file.
+
+By default the backend uses Conan's **default** profile. To use an autodetected
+profile, set
+**`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`** (or `true` / `yes`).
+
 ## Examples
 
 See the [examples/](examples/) directory for complete working examples:
 
-- **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
+- **[basic](examples/basic/)**: Simple Python extension using the `fmt` library; recipe in `conan/` subdirectory (`conanfile-path`)
 - **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11 (with dynamic version from `__init__.py`)
 - **[external-sources](examples/external-sources/)**: C++ code fetched in `source()`
 
