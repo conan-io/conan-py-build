@@ -525,7 +525,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     default_include = [
         "pyproject.toml",
         "CMakeLists.txt",
-        "conanfile.py",
         "cmake",
         "src",
         "include",
@@ -533,6 +532,17 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "README.rst",
         "LICENSE",
     ]
+
+    tool = _get_tool_config(source_dir)
+    conanfile_path = tool.get("conanfile-path") or "."
+
+    if conanfile_path == ".":
+        default_include.append("conanfile.py")
+    elif conanfile_path.endswith(".py"):
+        default_include.append(conanfile_path)
+    else:
+        default_include.append(f"{conanfile_path}/conanfile.py")
+
     default_exclude = [
         "__pycache__",
         "*.pyc",
