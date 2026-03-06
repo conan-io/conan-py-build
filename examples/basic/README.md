@@ -3,6 +3,8 @@
 This example demonstrates a Python package with C++ code that uses the `fmt`
 library (managed by Conan) for formatted output with colors.
 
+It also shows **`conanfile-path`** (recipe in `conan/` subdirectory).
+
 ## Build and Install
 
 ```bash

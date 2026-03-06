@@ -3,11 +3,14 @@ from pathlib import Path
 
 import pytest
 
+from conan.errors import ConanException
+
 from conan_py_build.build import (
     _parse_config,
     _read_version_from_file,
     _resolve_version,
     _get_sdist_config,
+    _resolve_conanfile_path,
     _get_wheel_tags,
     _check_wheel_package_path,
     _get_wheel_packages,
@@ -122,6 +125,23 @@ def test_get_sdist_config_minimal_pyproject(tmp_path):
 def test_get_sdist_config_tool_include_exclude(tmp_path):
     make_pyproject_with_tool_config(tmp_path)
     assert _get_sdist_config(tmp_path) == {"include": ["docs"], "exclude": ["README.md"]}
+
+
+def test_resolve_conanfile_path(tmp_path):
+    """Resolved path is the conanfile.py (py=True: only .py allowed)."""
+    (tmp_path / "conanfile.py").write_text("")
+    assert _resolve_conanfile_path(".", tmp_path) == tmp_path / "conanfile.py"
+
+    (tmp_path / "conan").mkdir()
+    (tmp_path / "conan" / "conanfile.py").write_text("")
+    assert _resolve_conanfile_path("conan", tmp_path) == tmp_path / "conan" / "conanfile.py"
+
+
+def test_resolve_conanfile_path_rejects_txt(tmp_path):
+    """Raises when only conanfile.txt exists (py=True allows only .py)."""
+    (tmp_path / "conanfile.txt").write_text("")
+    with pytest.raises(ConanException, match="Conanfile not found"):
+        _resolve_conanfile_path(".", tmp_path)
 
 
 def test_get_wheel_tags_from_env(monkeypatch):

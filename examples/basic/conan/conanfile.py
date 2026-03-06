@@ -9,7 +9,8 @@ class MyadderConan(ConanFile):
     generators = "CMakeToolchain", "CMakeDeps"
 
     def layout(self):
-        cmake_layout(self)
+        # Recipe in conan/, sources at project root (see pyproject conanfile-path)
+        cmake_layout(self, src_folder="..")
 
     def requirements(self):
         self.requires("fmt/12.1.0")
