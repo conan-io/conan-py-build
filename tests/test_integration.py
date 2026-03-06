@@ -1,4 +1,6 @@
 """Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
+import os
+import subprocess
 import tarfile
 import types
 import zipfile
@@ -149,3 +151,44 @@ def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     assert profile_path.is_file(), "conan-py-build.profile should be created when autodetect is set"
     content = profile_path.read_text()
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
+
+
+def test_build_sdist_scm_and_write_to(tmp_path, monkeypatch):
+    """Integration: version-scm resolves version from git tag and version-write-to persists it to a file."""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "pyproject.toml").write_text("""[project]
+name = "mypkg"
+dynamic = ["version"]
+description = "Test SCM + write-to"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+version-scm = true
+version-write-to = "src/mypkg/_version.py"
+""", encoding="utf-8")
+    (proj / "src" / "mypkg").mkdir(parents=True)
+    (proj / "src" / "mypkg" / "__init__.py").write_text("", encoding="utf-8")
+    (proj / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.15)\nproject(mypkg)\n")
+    (proj / "conanfile.py").write_text("from conan import ConanFile\nclass Pkg(ConanFile): pass\n")
+
+    git_env = {**dict(os.environ),
+               "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",
+               "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "init"], cwd=proj, check=True, capture_output=True, env=git_env)
+    subprocess.run(["git", "add", "."], cwd=proj, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=proj, check=True, capture_output=True, env=git_env)
+    subprocess.run(["git", "tag", "v4.0.1"], cwd=proj, check=True, capture_output=True)
+
+    monkeypatch.chdir(proj)
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    filename = build_sdist(str(dist))
+
+    assert "4.0.1" in filename
+    vfile = proj / "src" / "mypkg" / "_version.py"
+    assert vfile.is_file()
+    assert '__version__ = "4.0.1"' in vfile.read_text(encoding="utf-8")

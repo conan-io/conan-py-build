@@ -7,8 +7,10 @@ from conan.errors import ConanException
 
 from conan_py_build.build import (
     _parse_config,
+    _parse_git_describe,
     _read_version_from_file,
     _resolve_version,
+    _write_version_to_file,
     _get_sdist_config,
     _resolve_conanfile_path,
     _get_wheel_tags,
@@ -89,6 +91,27 @@ def test_read_version_from_file(tmp_path, content, expected):
 
 def test_read_version_from_file_missing_returns_none(tmp_path):
     assert _read_version_from_file(tmp_path / "nonexistent.py") is None
+
+
+@pytest.mark.parametrize("desc,expected", [
+    ("v1.0.0", "1.0.0"),
+    ("1.0.0", "1.0.0"),
+    ("v1.0.0-0-g775e71f", "1.0.0"),
+    ("v1.0.0-5-g775e71f", "1.0.0.dev5+g775e71f"),
+    ("v1.0.0-0-g775e71f-dirty", "1.0.0.dev0+g775e71f"),
+    ("abc1234", "0.0.0.dev0+gabc1234"),
+    ("abc1234-dirty", "0.0.0.dev0+gabc1234"),
+    ("", None),
+    ("  ", None),
+])
+def test_parse_git_describe(desc, expected):
+    assert _parse_git_describe(desc) == expected
+
+
+def test_write_version_to_file_no_config(tmp_path):
+    make_pyproject_minimal(tmp_path)
+    _write_version_to_file(tmp_path, "1.2.3")
+    assert not (tmp_path / "src" / "_version.py").exists()
 
 
 def test_resolve_version_from_metadata():

@@ -86,9 +86,17 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 ### Dynamic version
 
 There is limited support for dynamic version: set `dynamic = ["version"]` in
-`[project]` (no `version` key) and point to a Python file via
-`[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
-backend reads `__version__ = "x.y.z"` from that file.
+`[project]` (no `version` key). The backend resolves version in this order:
+
+1. **`version-file`**: Path to a Python file with `__version__ = "x.y.z"` at module level.
+2. **`version-scm`**: If `true`, derive version from `git describe --tags --dirty --always --long` (PEP 440).
+3. **`version-write-to`**: Path to write the resolved version. Creates/overwrites the file with `__version__ = "{version}"` before building wheel or sdist.
+
+```toml
+[tool.conan-py-build]
+version-scm = true
+version-write-to = "src/mypackage/_version.py"
+```
 
 ### License files (PEP 639)
 
