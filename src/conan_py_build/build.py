@@ -111,6 +111,13 @@ def _get_sdist_config(project_dir: Path) -> dict:
     }
 
 
+def _resolve_conanfile_path(conanfile_path: str, source_dir: Path) -> Path:
+    # Using py=True will raise an exception if the path is not a .py file.
+    conan_api = ConanAPI()
+    full_path = conan_api.local.get_conanfile_path(conanfile_path, source_dir, py=True)
+    return Path(full_path)
+
+
 def _get_version_from_config(source_dir: Path) -> Optional[str]:
     """Read version from [tool.conan-py-build] version-file if set. Reads pyproject from source_dir."""
     tool = _get_tool_config(source_dir)
@@ -412,8 +419,9 @@ def _do_build_wheel(
         profile_args.extend([f"--{arg}", str(p)])
 
     conanfile_path = tool.get("conanfile-path") or "."
+    resolved_conanfile = str(_resolve_conanfile_path(conanfile_path, source_dir))
 
-    source_cmd = ["source", conanfile_path]
+    source_cmd = ["source", resolved_conanfile]
     print("Running conan source...", flush=True)
     try:
         conan_api.command.run(source_cmd)
@@ -422,7 +430,7 @@ def _do_build_wheel(
 
     build_cmd = [
         "build",
-        conanfile_path,
+        resolved_conanfile,
         "-of",
         str(staging_dir),
         "-c",
@@ -449,7 +457,7 @@ def _do_build_wheel(
     
     export_pkg_cmd = [
         "export-pkg",
-        conanfile_path,
+        resolved_conanfile,
         "-of",
         str(staging_dir),
         "-tf",
@@ -535,10 +543,8 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
 
     tool = _get_tool_config(source_dir)
     conanfile_path = tool.get("conanfile-path") or "."
-
-    conan_api = ConanAPI()
-    full_path = conan_api.local.get_conanfile_path(conanfile_path, source_dir, py=True)
-    default_include.append(Path(full_path).relative_to(source_dir).as_posix())
+    resolved_conanfile = _resolve_conanfile_path(conanfile_path, source_dir)
+    default_include.append(resolved_conanfile.relative_to(source_dir).as_posix())
 
     default_exclude = [
         "__pycache__",
