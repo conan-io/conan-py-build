@@ -136,6 +136,9 @@ def test_resolve_conanfile_path(tmp_path):
     (tmp_path / "conan" / "conanfile.py").write_text("")
     assert _resolve_conanfile_path("conan", tmp_path) == tmp_path / "conan" / "conanfile.py"
 
+
+def test_resolve_conanfile_path_rejects_txt(tmp_path):
+    """Raises when only conanfile.txt exists (py=True allows only .py)."""
     (tmp_path / "conanfile.txt").write_text("")
     with pytest.raises(ConanException, match="Conanfile not found"):
         _resolve_conanfile_path(".", tmp_path)
