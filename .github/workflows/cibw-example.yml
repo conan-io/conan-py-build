@@ -1,5 +1,8 @@
 name: Example – cibuildwheel + conan-py-build
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
