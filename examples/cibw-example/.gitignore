@@ -1,0 +1,4 @@
+# Used by the CI workflow to install the backend
+backend-dist/
+wheelhouse/
+*.whl

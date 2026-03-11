@@ -1,0 +1,79 @@
+name: Example – cibuildwheel + conan-py-build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/cibuildwheel]
+
+jobs:
+  # Build a wheel of conan-py-build and pass it as an artifact.
+  backend-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build conan-py-build wheel
+        run: |
+          pip install build
+          python -m build --wheel --outdir backend-dist .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conan-py-build-wheel
+          path: backend-dist/*.whl
+
+  build-wheels:
+    needs: backend-wheel
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+          - os: macos-14
+            arch: arm64
+          - os: macos-14
+            arch: x86_64
+          - os: windows-latest
+            arch: AMD64
+
+    env:
+      CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+      CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+      CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
+      CIBW_BEFORE_BUILD: "pip install backend-dist/*.whl"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: conan-py-build-wheel
+
+      # so that the backend wheel is visible to the cibuildwheel job:
+      # CIBW_BEFORE_BUILD: "pip install backend-dist/*.whl"
+      - name: Place backend wheel inside example project
+        run: |
+          mkdir -p examples/cibw-example/backend-dist
+          mv *.whl examples/cibw-example/backend-dist/
+          ls -la examples/cibw-example/backend-dist/
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        with:
+          package-dir: examples/cibw-example
+          output-dir: wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: wheelhouse/*.whl

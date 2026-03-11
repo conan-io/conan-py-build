@@ -1,0 +1,27 @@
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder-cibw"
+version = "0.1.0"
+description = "Example: conan-py-build + cibuildwheel"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+[tool.conan-py-build.sdist]
+exclude = ["README.md"]
+
+[tool.cibuildwheel]
+build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+# Optional: frontend for installing deps (default is pip)
+# build-frontend = "build"
+skip = ["*-musllinux*", "*-manylinux_i686", "pp*", "*-win32"]
+test-command = "python -c \"import myadder_pybind11; assert myadder_pybind11.add(2,3)==5.0; print('ok')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
