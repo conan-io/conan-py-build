@@ -6,7 +6,9 @@ permissions:
 on:
   workflow_dispatch:
   push:
-    branches: [test/cibuildwheel]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   # Build a wheel of conan-py-build and pass it as an artifact.
