@@ -9,6 +9,9 @@ description = "Example: conan-py-build + cibuildwheel"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 
+[tool.conan-py-build.wheel]
+packages = ["src/myadder_pybind11"]
+
 [tool.conan-py-build.sdist]
 exclude = ["README.md"]
 
