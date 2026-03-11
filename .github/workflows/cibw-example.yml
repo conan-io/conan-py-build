@@ -67,6 +67,7 @@ jobs:
       # so that the backend wheel is visible to the cibuildwheel job:
       # CIBW_BEFORE_BUILD: "pip install backend-dist/*.whl"
       - name: Place backend wheel inside example project
+        shell: bash
         run: |
           mkdir -p examples/cibw-example/backend-dist
           mv *.whl examples/cibw-example/backend-dist/

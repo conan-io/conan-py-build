@@ -16,7 +16,7 @@ exclude = ["README.md"]
 build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
 # Optional: frontend for installing deps (default is pip)
 # build-frontend = "build"
-skip = ["*-musllinux*", "*-manylinux_i686", "pp*", "*-win32"]
+skip = ["*-musllinux*", "*-manylinux_i686", "*-win32"]
 test-command = "python -c \"import myadder_pybind11; assert myadder_pybind11.add(2,3)==5.0; print('ok')\""
 
 [tool.cibuildwheel.linux]

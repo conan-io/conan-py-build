@@ -72,3 +72,6 @@ deactivate_conanrun*.sh
 
 examples/external-sources/my-build/
 examples/external-sources/src/libhello/
+
+# cibw-example: backend wheel dir created by CI (not ignored in example so container copy gets it)
+examples/cibw-example/backend-dist/
