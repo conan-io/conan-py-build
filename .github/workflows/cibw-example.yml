@@ -80,6 +80,12 @@ jobs:
         run: |
           echo "CIBW_CONTAINER_ENGINE=docker; create_args: -v ${{ github.workspace }}/examples/cibw-example/backend-dist:/project/backend-dist" >> $GITHUB_ENV
 
+      - name: Set CIBW_BEFORE_BUILD to absolute path (macOS and Windows)
+        if: runner.os != 'Linux'
+        run: |
+          echo "CIBW_BEFORE_BUILD=pip install ${{ github.workspace }}/examples/cibw-example/backend-dist" >> $GITHUB_ENV
+        shell: bash
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.0
         with:
