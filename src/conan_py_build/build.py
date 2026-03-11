@@ -99,16 +99,28 @@ def _read_version_from_file(path: Path) -> Optional[str]:
     return None
 
 def _parse_git_describe(desc: str) -> Optional[str]:
-    """Parse git describe output."""
-    if not desc or not desc.strip():
-        return None
+    """Convert ``git describe --tags --dirty --always --long`` output to a PEP 440 version.
+
+    Handled formats (examples):
+        v1.2.3-0-gabcdef0        -> "1.2.3"                (exact tag, clean)
+        v1.2.3-0-gabcdef0-dirty  -> "1.2.3.dev0+gabcdef0"  (exact tag, dirty)
+        v1.2.3-5-gabcdef0        -> "1.2.3.dev5+gabcdef0"  (5 commits after tag)
+        abcdef0                  -> "0.0.0.dev0+gabcdef0"   (no tags, hash only)
+        abcdef0-dirty            -> "0.0.0.dev0+gabcdef0"   (no tags, dirty)
+        v1.2.3 / 1.2.3          -> "1.2.3"                 (plain tag, fallback)
+    """
+    describe_re = re.compile(r"^v?(?P<tag>.+?)-(?P<commits>\d+)-g(?P<rev>[a-f0-9]+)(?P<dirty>-dirty)?$")
+    hash_re = re.compile(r"^(?P<rev>[a-f0-9]{7,40})(?P<dirty>-dirty)?$")
     desc = desc.strip()
-    m = re.match(r"^v?(.+?)-(\d+)-g([a-f0-9]+)(?:-dirty)?$", desc)
-    if m:
-        tag, n, rev = m.group(1).lstrip("v"), int(m.group(2)), m.group(3)[:7]
-        return tag if n == 0 and "-dirty" not in desc else f"{tag}.dev{n}+g{rev}"
-    if re.fullmatch(r"[a-f0-9]{7,40}(?:-dirty)?", desc):
-        return f"0.0.0.dev0+g{desc.split('-')[0][:7]}"
+    if not desc:
+        return None
+    # tag-commits-hash[-dirty]  (standard --long output)
+    if m := describe_re.match(desc):
+        if int(m["commits"]) == 0 and not m["dirty"]:
+            return m["tag"].lstrip("v")
+        return f"{m['tag']}.dev{m['commits']}+g{m['rev']}"
+    if m := hash_re.fullmatch(desc):
+        return f"0.0.0.dev0+g{m['rev']}"
     return desc.lstrip("v") or None
 
 
