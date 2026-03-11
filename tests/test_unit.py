@@ -11,7 +11,6 @@ from conan_py_build.build import (
     _parse_git_describe,
     _read_version_from_file,
     _resolve_version,
-    _resolve_project_path,
     _write_version_to_file,
     _get_sdist_config,
     _resolve_conanfile_path,
@@ -180,15 +179,6 @@ write-to = "src/pkg/_version.py"
     assert vfile.is_file()
     assert '__version__ = "2.0.0"' in vfile.read_text(encoding="utf-8")
 
-
-def test_resolve_project_path_ok(tmp_path):
-    resolved = _resolve_project_path(tmp_path, "sub/file.py", "test")
-    assert resolved == (tmp_path / "sub" / "file.py").resolve()
-
-
-def test_resolve_project_path_outside_raises(tmp_path):
-    with pytest.raises(RuntimeError, match="must be inside project"):
-        _resolve_project_path(tmp_path, "../outside.py", "test")
 
 
 def test_resolve_version_from_metadata():

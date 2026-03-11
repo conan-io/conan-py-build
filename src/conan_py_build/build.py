@@ -187,11 +187,11 @@ def _write_version_to_file(source_dir: Path, version: str) -> None:
     write_to = scm_config.get("write-to") if isinstance(scm_config, dict) else None
     if not write_to:
         return
-    resolved = (source_dir / rel_path).resolve()
+    resolved = (source_dir / write_to).resolve()
     try:
         resolved.relative_to(source_dir.resolve())
     except ValueError:
-        raise RuntimeError(f"{label} must be inside project: \"version-scm.write-to\"")
+        raise RuntimeError(f"version-scm.write-to must be inside project: {write_to!r}")
     resolved.parent.mkdir(parents=True, exist_ok=True)
     resolved.write_text(f'__version__ = "{version}"\n', encoding="utf-8")
 
@@ -214,11 +214,11 @@ def _get_version_from_config(source_dir: Path) -> Optional[str]:
             raise RuntimeError(
                 'version = "version-file" requires version-file = "path/to/file.py"'
             )
-        resolved = (source_dir / rel_path).resolve()
+        resolved = (source_dir / version_file).resolve()
         try:
             resolved.relative_to(source_dir.resolve())
         except ValueError:
-            raise RuntimeError(f"{label} must be inside project: \"version-file\"")
+            raise RuntimeError(f"version-file must be inside project: {version_file!r}")
         return _read_version_from_file(resolved)
 
     if strategy == "version-scm":
