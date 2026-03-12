@@ -193,6 +193,9 @@ def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, bu
         path = Path(conan_api.config.home()) / "profiles" / "default"
     if use_local_auto_profile or not path.is_file():
         detected = conan_api.profiles.detect()
+        print("--------------------------------")
+        print(f"Detected profile: {detected}", flush=True)
+        print("--------------------------------")
         if (detected.settings or {}).get("compiler") is None:
             raise RuntimeError(
                 "No compiler detected. Install a C/C++ toolchain (e.g. Visual Studio on Windows, "
