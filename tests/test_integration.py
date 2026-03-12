@@ -167,8 +167,10 @@ requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 
 [tool.conan-py-build]
-version-scm = true
-version-write-to = "src/mypkg/_version.py"
+version = "version-scm"
+
+[tool.conan-py-build.version-scm]
+write-to = "src/mypkg/_version.py"
 """, encoding="utf-8")
     (proj / "src" / "mypkg").mkdir(parents=True)
     (proj / "src" / "mypkg" / "__init__.py").write_text("", encoding="utf-8")

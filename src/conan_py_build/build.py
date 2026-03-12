@@ -159,28 +159,40 @@ def _resolve_conanfile_path(conanfile_path: str, source_dir: Path) -> Path:
     return Path(full_path)
 
 
-def _write_version_to_file(source_dir: Path, version: str) -> None:
-    """Write __version__ to the file configured in version-write-to (if set)."""
-    tool = _get_tool_config(source_dir)
-    write_to = tool.get("version-write-to")
-    if not write_to or not isinstance(write_to, str):
+def _write_version_to_file(source_dir: Path, write_to: str, version: str) -> None:
+    """Write ``__version__ = "<version>"`` to *write_to* (relative to *source_dir*)."""
+    if not all([write_to, version]):
         return
     resolved = (source_dir / write_to).resolve()
     try:
         resolved.relative_to(source_dir.resolve())
     except ValueError:
         raise RuntimeError(
-            f"version-write-to must be inside project: {write_to!r}"
+            f"version-scm.write-to must be inside project: {write_to!r}"
         )
     resolved.parent.mkdir(parents=True, exist_ok=True)
     resolved.write_text(f'__version__ = "{version}"\n', encoding="utf-8")
 
 
 def _get_version_from_config(source_dir: Path) -> Optional[str]:
-    """Read version from [tool.conan-py-build] version-file if set. Reads pyproject from source_dir."""
+    """Resolve dynamic version based on [tool.conan-py-build].version strategy.
+
+    Supported strategies:
+        version = "version-file"  -> read __version__ from the path in version-file
+        version = "version-scm"   -> get version from git describe (PEP 440)
+    """
     tool = _get_tool_config(source_dir)
-    version_file = tool.get("version-file")
-    if version_file:
+    strategy = tool.get("version")
+    if not strategy:
+        return None
+
+    if strategy == "version-file":
+        version_file = tool.get("version-file")
+        if not version_file:
+            raise RuntimeError(
+                'version = "version-file" requires a "version-file" path '
+                '(e.g. version-file = "src/pkg/__init__.py")'
+            )
         resolved = (source_dir / version_file).resolve()
         try:
             resolved.relative_to(source_dir.resolve())
@@ -189,9 +201,16 @@ def _get_version_from_config(source_dir: Path) -> Optional[str]:
                 f"version-file must be inside project: {version_file!r}"
             )
         return _read_version_from_file(resolved)
-    version_scm = tool.get("version-scm")
-    if version_scm:
-        return _get_version_from_scm(source_dir)
+
+    if strategy == "version-scm":
+        version = _get_version_from_scm(source_dir)
+        _write_version_to_file(source_dir, tool.get("version-scm", {}).get("write-to"), version)
+        return version
+
+    raise RuntimeError(
+        f"Unknown version strategy: {strategy!r}. "
+        'Use "version-file" or "version-scm".'
+    )
 
 
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
@@ -204,7 +223,7 @@ def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
         if version_is_dynamic and not version:
             raise RuntimeError(
                 "dynamic = [\"version\"] but version could not be resolved. "
-                "Set [tool.conan-py-build] version-file to a file with __version__ = \"x.y.z\" at module level."
+                "Set [tool.conan-py-build] version = \"version-file\" or \"version-scm\"."
             )
 
     version = version or "0.0.0"
@@ -368,7 +387,6 @@ def build_wheel(
     source_dir = Path.cwd()
     project_metadata = _get_project_metadata(source_dir)
     version = _resolve_version(project_metadata, source_dir)
-    _write_version_to_file(source_dir, version)
     name = _normalize_name(project_metadata.get("name", "unknown"))
 
     print(f"Building wheel for {name}...")
@@ -584,7 +602,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     source_dir = Path.cwd()
     project_metadata = _get_project_metadata(source_dir)
     version = _resolve_version(project_metadata, source_dir)
-    _write_version_to_file(source_dir, version)
     name = project_metadata.get("name", "unknown")
     sdist_name = f"{name}-{version}"
     sdist_filename = f"{sdist_name}.tar.gz"

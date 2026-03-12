@@ -76,7 +76,9 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `version-file` | Path to a Python file from which to read `__version__` when `[project].version` is dynamic | (none) |
+| `version` | Version strategy: `"version-file"` or `"version-scm"` | (none -- uses static `[project].version`) |
+| `version-file` | Path to a Python file with `__version__` (required when `version = "version-file"`) | (none) |
+| `version-scm.write-to` | Path to write the resolved SCM version (optional, only with `version = "version-scm"`) | (none) |
 | `conanfile-path` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
 | `wheel.packages` | List of paths (relative to project root) of Python packages to include in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_project_name>"]` |
 | `sdist.include` | List of paths or patterns to add to the sdist | `[]` |
@@ -86,16 +88,26 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 ### Dynamic version
 
 There is limited support for dynamic version: set `dynamic = ["version"]` in
-`[project]` (no `version` key). The backend resolves version in this order:
+`[project]` (no `version` key) and configure a version strategy in
+`[tool.conan-py-build]`.
 
-1. **`version-file`**: Path to a Python file with `__version__ = "x.y.z"` at module level.
-2. **`version-scm`**: If `true`, derive version from `git describe --tags --dirty --always --long` (PEP 440).
-3. **`version-write-to`**: Path to write the resolved version. Creates/overwrites the file with `__version__ = "{version}"` before building wheel or sdist.
+**`version = "version-file"`** -- read `__version__` from a Python file:
 
 ```toml
 [tool.conan-py-build]
-version-scm = true
-version-write-to = "src/mypackage/_version.py"
+version = "version-file"
+version-file = "src/mypackage/__init__.py"
+```
+
+**`version = "version-scm"`** -- derive version from `git describe --tags --dirty --always --long` (PEP 440).
+Optionally write the resolved version to a file with `write-to`:
+
+```toml
+[tool.conan-py-build]
+version = "version-scm"
+
+[tool.conan-py-build.version-scm]
+write-to = "src/mypackage/_version.py"
 ```
 
 ### License files (PEP 639)

@@ -45,6 +45,7 @@ requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 
 [tool.conan-py-build]
+version = "version-file"
 version-file = "python/myadder/__init__.py"
 
 [tool.conan-py-build.wheel]
@@ -108,10 +109,15 @@ def test_parse_git_describe(desc, expected):
     assert _parse_git_describe(desc) == expected
 
 
-def test_write_version_to_file_no_config(tmp_path):
-    make_pyproject_minimal(tmp_path)
-    _write_version_to_file(tmp_path, "1.2.3")
-    assert not (tmp_path / "src" / "_version.py").exists()
+def test_write_version_to_file(tmp_path):
+    _write_version_to_file(tmp_path, "src/_version.py", "1.2.3")
+    written = (tmp_path / "src" / "_version.py").read_text(encoding="utf-8")
+    assert '__version__ = "1.2.3"' in written
+
+
+def test_write_version_to_file_outside_project_raises(tmp_path):
+    with pytest.raises(RuntimeError, match="must be inside project"):
+        _write_version_to_file(tmp_path, "../outside.py", "1.0.0")
 
 
 def test_resolve_version_from_metadata():
@@ -137,6 +143,42 @@ build-backend = "conan_py_build.build"
 """, encoding="utf-8")
     meta = {"name": "pkg", "dynamic": ["version"]}
     with pytest.raises(RuntimeError, match="version could not be resolved"):
+        _resolve_version(meta, tmp_path)
+
+
+def test_resolve_version_unknown_strategy_raises(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("""[project]
+name = "pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+version = "unknown-strategy"
+""", encoding="utf-8")
+    meta = {"name": "pkg", "dynamic": ["version"]}
+    with pytest.raises(RuntimeError, match="Unknown version strategy"):
+        _resolve_version(meta, tmp_path)
+
+
+def test_resolve_version_version_file_missing_path_raises(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("""[project]
+name = "pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+version = "version-file"
+""", encoding="utf-8")
+    meta = {"name": "pkg", "dynamic": ["version"]}
+    with pytest.raises(RuntimeError, match='requires a "version-file" path'):
         _resolve_version(meta, tmp_path)
 
 
