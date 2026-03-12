@@ -42,6 +42,7 @@ scm = [
 dev = [
     "pytest",
     "build",
+    "setuptools-scm",
 ]
 
 [project.urls]
