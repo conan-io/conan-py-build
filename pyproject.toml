@@ -36,6 +36,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+scm = [
+    "setuptools-scm",
+]
 dev = [
     "pytest",
     "build",

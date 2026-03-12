@@ -1,4 +1,5 @@
 """Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
+import subprocess
 import tarfile
 import types
 import zipfile
@@ -149,3 +150,105 @@ def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     assert profile_path.is_file(), "conan-py-build.profile should be created when autodetect is set"
     content = profile_path.read_text()
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
+
+
+def test_build_sdist_version_file(tmp_path, monkeypatch):
+    """Integration: build_sdist resolves dynamic version from [tool.version].file."""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "pyproject.toml").write_text("""[project]
+name = "file-ver-pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+version = "file"
+
+[tool.version]
+file = "src/file_ver_pkg/__init__.py"
+""", encoding="utf-8")
+    (proj / "conanfile.py").write_text("""from conan import ConanFile
+from conan.tools.cmake import cmake_layout
+
+class Pkg(ConanFile):
+    name = "file_ver_pkg"
+    version = "2.3.4"
+    settings = "os", "compiler", "build_type", "arch"
+    generators = "CMakeToolchain", "CMakeDeps"
+    def layout(self):
+        cmake_layout(self)
+    def source(self):
+        pass
+    def build(self):
+        pass
+""", encoding="utf-8")
+    (proj / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.15)\nproject(x)\n")
+    pkg = proj / "src" / "file_ver_pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text('__version__ = "2.3.4"', encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    filename = build_sdist(str(sdist_dir))
+    assert filename == "file-ver-pkg-2.3.4.tar.gz"
+
+
+def test_build_sdist_version_scm(tmp_path, monkeypatch):
+    """Integration: build_sdist resolves dynamic version from setuptools_scm (git tag)."""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "pyproject.toml").write_text("""[project]
+name = "scm-ver-pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+version = "setuptools_scm"
+
+[tool.version.setuptools_scm]
+write_to = "src/scm_ver_pkg/_version.py"
+""", encoding="utf-8")
+    (proj / "conanfile.py").write_text("""from conan import ConanFile
+from conan.tools.cmake import cmake_layout
+
+class Pkg(ConanFile):
+    name = "scm_ver_pkg"
+    version = "3.0.0"
+    settings = "os", "compiler", "build_type", "arch"
+    generators = "CMakeToolchain", "CMakeDeps"
+    def layout(self):
+        cmake_layout(self)
+    def source(self):
+        pass
+    def build(self):
+        pass
+""", encoding="utf-8")
+    (proj / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.15)\nproject(x)\n")
+    pkg = proj / "src" / "scm_ver_pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+
+    env = {**dict(__import__("os").environ), "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",
+           "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "init"], cwd=proj, check=True, env=env, capture_output=True)
+    subprocess.run(["git", "add", "."], cwd=proj, check=True, env=env, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=proj, check=True, env=env, capture_output=True)
+    subprocess.run(["git", "tag", "v3.0.0"], cwd=proj, check=True, env=env, capture_output=True)
+
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    filename = build_sdist(str(sdist_dir))
+    assert filename == "scm-ver-pkg-3.0.0.tar.gz"
