@@ -16,7 +16,7 @@ packages = ["src/myadder_pybind11"]
 exclude = ["README.md"]
 
 [tool.cibuildwheel]
-build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 # CI only: use --no-isolation so the build uses the conan-py-build wheel from the repo
 # (installed in CIBW_BEFORE_BUILD) instead of the one from PyPI. For normal use you can omit this.
 build-frontend = { name = "build", args = ["--no-isolation"] }
