@@ -11,11 +11,9 @@ on:
     branches: [main]
 
 jobs:
-  # Build a wheel of conan-py-build and pass it as an artifact.
+  # Build conan-py-build wheel and upload as artifact for build-wheels jobs.
   backend-wheel:
     runs-on: ubuntu-latest
-    outputs:
-      wheel_name: ${{ steps.build-backend.outputs.wheel_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,12 +21,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build conan-py-build wheel
-        id: build-backend
-        run: |
-          pip install build
-          python -m build --wheel --outdir backend-dist .
-          echo "wheel_name=$(ls backend-dist/*.whl | xargs -I {} basename {})" >> $GITHUB_OUTPUT
+      - run: pip install build && python -m build --wheel --outdir backend-dist .
       - uses: actions/upload-artifact@v4
         with:
           name: conan-py-build-wheel
