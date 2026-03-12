@@ -1,0 +1,4 @@
+include(default)
+[settings]
+arch=armv8
+os.version=11.0
