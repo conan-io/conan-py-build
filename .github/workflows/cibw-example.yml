@@ -63,7 +63,6 @@ jobs:
       CIBW_ARCHS_MACOS: ${{ matrix.arch }}
       CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
       CIBW_CONFIG_SETTINGS: "host-profile=profiles/${{ matrix.profile }}"
-      CIBW_ENVIRONMENT: "CONAN_PY_BUILD_PROFILE_AUTODETECT=1"
       CIBW_BEFORE_BUILD: "pip install backend-dist/*.whl"
     steps:
       - uses: actions/checkout@v4
