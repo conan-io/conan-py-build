@@ -29,6 +29,8 @@ manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+# Skip delocate: we only link statically (fmt) and to libpython/system; no .dylib to bundle.
+repair-wheel-command = ""
 
 # CONAN_CPYTHON_VERSION read in Conan profiles for macOS
 [[tool.cibuildwheel.overrides]]
