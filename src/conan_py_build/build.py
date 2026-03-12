@@ -402,7 +402,10 @@ def _do_build_wheel(
     host_profile, build_profile = _resolve_default_profiles(
         conan_api, source_dir, config["host_profile"], config["build_profile"]
     )
-
+    print("--------------------------------")
+    print(f"Host profile: {host_profile}", flush=True)
+    print(f"Build profile: {build_profile}", flush=True)
+    print("--------------------------------")
     profile_args = [
         "--profile:host",
         host_profile,
