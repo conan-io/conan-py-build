@@ -182,7 +182,7 @@ def _autodetect_profile() -> bool:
 
 
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
-    if host_profile != "default" or build_profile != "default":
+    if host_profile != "default" and build_profile != "default":
         return host_profile, build_profile
     use_local_auto_profile = _autodetect_profile()
     if use_local_auto_profile:

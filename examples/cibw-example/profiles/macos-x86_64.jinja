@@ -1,0 +1,17 @@
+{% set py_ver = os.environ["CONAN_CPYTHON_VERSION"] %}
+{% set py_tag = "cp" + "".join(py_ver.split(".")[:2]) %}
+{% set cpython_ref = "cpython-portable/" + py_ver %}
+include(default)
+
+[settings]
+arch=x86_64
+os.version=11.0
+
+[tool_requires]
+cmake/[>3.29]
+&:{{ cpython_ref }}
+
+[buildenv]
+WHEEL_PYVER={{ py_tag }}
+WHEEL_ABI={{ py_tag }}
+WHEEL_ARCH=macosx_11_0_x86_64

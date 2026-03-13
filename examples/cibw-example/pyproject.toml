@@ -1,0 +1,54 @@
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder-cibw"
+version = "0.1.0"
+description = "Example: conan-py-build + cibuildwheel"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+[tool.conan-py-build.wheel]
+packages = ["src/myadder_pybind11"]
+
+[tool.conan-py-build.sdist]
+exclude = ["README.md"]
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+# CI only: use --no-isolation so the build uses the conan-py-build wheel from the repo
+# (installed in CIBW_BEFORE_BUILD) instead of the one from PyPI. For normal use you can omit this.
+build-frontend = { name = "build", args = ["--no-isolation"] }
+skip = ["*-musllinux*", "*-manylinux_i686", "*-win32"]
+test-command = "python -c \"import myadder_pybind11; assert myadder_pybind11.add(2,3)==5.0; print('ok')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+# Skip delocate: we only link statically (fmt) and to libpython/system; no .dylib to bundle.
+repair-wheel-command = ""
+
+# CONAN_CPYTHON_VERSION for Conan profiles that use cpython-portable (e.g. macOS x86_64)
+[[tool.cibuildwheel.overrides]]
+select = "cp39-*"
+environment = { CONAN_CPYTHON_VERSION = "3.9.20" }
+
+[[tool.cibuildwheel.overrides]]
+select = "cp310-*"
+environment = { CONAN_CPYTHON_VERSION = "3.10.19" }
+
+[[tool.cibuildwheel.overrides]]
+select = "cp311-*"
+environment = { CONAN_CPYTHON_VERSION = "3.11.14" }
+
+[[tool.cibuildwheel.overrides]]
+select = "cp312-*"
+environment = { CONAN_CPYTHON_VERSION = "3.12.12" }
+
+[[tool.cibuildwheel.overrides]]
+select = "cp313-*"
+environment = { CONAN_CPYTHON_VERSION = "3.13.11" }

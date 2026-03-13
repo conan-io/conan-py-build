@@ -1,0 +1,112 @@
+name: Example – cibuildwheel + conan-py-build
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Build conan-py-build wheel and upload as artifact for build-wheels jobs.
+  backend-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build && python -m build --wheel --outdir backend-dist .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conan-py-build-wheel
+          path: backend-dist/*.whl
+
+  build-wheels:
+    needs: backend-wheel
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            profile: linux-x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            profile: linux-aarch64
+          - os: macos-14
+            arch: arm64
+            profile: macos-arm64
+          - os: macos-14
+            arch: x86_64
+            profile: macos-x86_64.jinja
+          - os: windows-latest
+            arch: AMD64
+            profile: windows-x86_64
+
+    env:
+      CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+      CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+      CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
+      CIBW_CONFIG_SETTINGS: "host-profile=./profiles/${{ matrix.profile }}"
+      CIBW_BEFORE_BUILD: "pip install backend-dist/*.whl"
+      CIBW_BUILD_VERBOSITY: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: conan-py-build-wheel
+
+      # CIBW_BEFORE_BUILD installs the backend from backend-dist/*.whl
+      - name: Place backend wheel inside example project
+        shell: bash
+        run: |
+          mkdir -p examples/cibw-example/backend-dist
+          mv *.whl examples/cibw-example/backend-dist/
+          ls -la examples/cibw-example/backend-dist/
+
+      # On Linux, cibuildwheel runs in Docker and only gets files from the repo copy
+      # (e.g. git archive), so backend-dist is not there. Mount it so before_build can pip install.
+      - name: Set container engine to mount backend-dist (Linux only)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo "CIBW_CONTAINER_ENGINE=docker; create_args: -v ${{ github.workspace }}/examples/cibw-example/backend-dist:/project/backend-dist" >> $GITHUB_ENV
+
+      # Export cpython-portable to Conan cache so it's available for the build.
+      - name: Export cpython-portable
+        shell: bash
+        run: |
+          pip install conan
+          conan profile detect --force
+          for ver in 3.9.20 3.10.19 3.11.14 3.12.12 3.13.11; do
+            conan export recipes/cpython --version=$ver
+          done
+
+      - name: Set CIBW_BEFORE_BUILD to absolute path (macOS and Windows)
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          whl=$(ls "${{ github.workspace }}/examples/cibw-example/backend-dist/"*.whl 2>/dev/null | head -1)
+          echo "CIBW_BEFORE_BUILD=pip install $whl" >> $GITHUB_ENV
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        with:
+          package-dir: examples/cibw-example
+          output-dir: wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: wheelhouse/*.whl
