@@ -85,6 +85,7 @@ jobs:
 
       # Export cpython-portable to Conan cache so it's available for the build.
       - name: Export cpython-portable
+        shell: bash
         run: |
           pip install conan
           conan profile detect --force
