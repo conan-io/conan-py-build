@@ -145,7 +145,12 @@ def _get_version_from_file(source_dir: Path) -> Optional[str]:
 
 
 def _get_version_from_scm(source_dir: Path) -> str:
-    """Get version from setuptools-scm using VCS tags."""
+    """Get version from setuptools-scm using VCS tags.
+
+    Reads [tool.setuptools_scm] from pyproject.toml and forwards recognised
+    keys (root, local_scheme, version_scheme, fallback_version) to
+    setuptools_scm.get_version().
+    """
     try:
         from setuptools_scm import get_version
     except ImportError:
@@ -153,8 +158,14 @@ def _get_version_from_scm(source_dir: Path) -> str:
             "setuptools-scm is required when version = 'setuptools_scm'. "
             "Add 'setuptools-scm' to [build-system].requires."
         )
-    version = get_version(root=str(source_dir))
-    return version
+
+    scm_config = _read_pyproject(source_dir).get("tool", {}).get("setuptools_scm", {})
+    kwargs = {"root": str((source_dir / scm_config.get("root", ".")).resolve())}
+    for key in ("local_scheme", "version_scheme", "fallback_version"):
+        if key in scm_config:
+            kwargs[key] = scm_config[key]
+
+    return get_version(**kwargs)
 
 
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:

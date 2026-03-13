@@ -104,6 +104,31 @@ file = "src/mypackage/__init__.py"
 version = "setuptools_scm"
 ```
 
+The backend reads `[tool.setuptools_scm]` and forwards the following options to
+`setuptools_scm.get_version()`:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `local_scheme` | Controls the local part of the version (after `+`). Set to `"no-local-version"` to strip the `+gHASH` suffix, which is required for PyPI uploads. | `setuptools-scm` default (`"node-and-date"`) |
+| `version_scheme` | How the version string is constructed between tags. Common values: `"guess-next-dev"`, `"post-release"`, `"calver-by-date"`. | `setuptools-scm` default (`"guess-next-dev"`) |
+| `fallback_version` | Static version string used when SCM metadata is unavailable (e.g. building from a tarball without `.git`). | (none — raises error) |
+| `root` | Path to the SCM root relative to `pyproject.toml`. Only needed when the project lives in a subdirectory of the repository (e.g. monorepos). | `"."` (same directory) |
+
+Example with `local_scheme` and `fallback_version`:
+
+```toml
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+```
+
+Example for a monorepo where `.git` is one level up:
+
+```toml
+[tool.setuptools_scm]
+root = ".."
+```
+
 Optionally, set `write_to` to include the generated version file in the sdist:
 
 ```toml

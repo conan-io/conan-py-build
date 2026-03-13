@@ -1,0 +1,22 @@
+[build-system]
+requires = ["conan-py-build", "setuptools-scm"]
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder_scm"
+dynamic = ["version"]
+description = "A simple Python package with C++ code that adds two numbers (SCM versioning)"
+requires-python = ">=3.8"
+
+[tool.conan-py-build]
+conanfile-path = "conan"
+version = "setuptools_scm"
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+root = "."
+
+[tool.version.setuptools_scm]
+write_to = "src/myadder_scm/_version.py"
