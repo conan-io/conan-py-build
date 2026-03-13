@@ -32,23 +32,23 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 # Skip delocate: we only link statically (fmt) and to libpython/system; no .dylib to bundle.
 repair-wheel-command = ""
 
-# CONAN_CPYTHON_VERSION read in Conan profiles for macOS
+# CONAN_CPYTHON_VERSION for Conan profiles that use cpython-portable (e.g. macOS x86_64)
 [[tool.cibuildwheel.overrides]]
-select = "cp39-macosx_*"
+select = "cp39-*"
 environment = { CONAN_CPYTHON_VERSION = "3.9.20" }
 
 [[tool.cibuildwheel.overrides]]
-select = "cp310-macosx_*"
+select = "cp310-*"
 environment = { CONAN_CPYTHON_VERSION = "3.10.19" }
 
 [[tool.cibuildwheel.overrides]]
-select = "cp311-macosx_*"
+select = "cp311-*"
 environment = { CONAN_CPYTHON_VERSION = "3.11.14" }
 
 [[tool.cibuildwheel.overrides]]
-select = "cp312-macosx_*"
+select = "cp312-*"
 environment = { CONAN_CPYTHON_VERSION = "3.12.12" }
 
 [[tool.cibuildwheel.overrides]]
-select = "cp313-macosx_*"
+select = "cp313-*"
 environment = { CONAN_CPYTHON_VERSION = "3.13.11" }

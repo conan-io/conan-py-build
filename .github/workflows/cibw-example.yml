@@ -83,14 +83,12 @@ jobs:
         run: |
           echo "CIBW_CONTAINER_ENGINE=docker; create_args: -v ${{ github.workspace }}/examples/cibw-example/backend-dist:/project/backend-dist" >> $GITHUB_ENV
 
-      - name: Pre-create cpython-portable (macOS x86_64 only)
-        if: runner.os == 'macOS' && matrix.profile == 'macos-x86_64.jinja'
+      # Export cpython-portable to Conan cache so it's available for the build.
+      - name: Export cpython-portable
         run: |
           pip install conan
           conan profile detect --force
-          for ver in 3.9.20 3.10.19 3.11.14 3.12.12 3.13.11; do
-            conan create recipes/cpython --version=$ver -s os=Macos -s arch=x86_64
-          done
+          conan export recipes/cpython
 
       - name: Set CIBW_BEFORE_BUILD to absolute path (macOS and Windows)
         if: runner.os != 'Linux'
