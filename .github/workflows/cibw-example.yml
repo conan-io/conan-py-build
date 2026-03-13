@@ -88,7 +88,7 @@ jobs:
         run: |
           pip install conan
           conan profile detect --force
-          conan export recipes/cpython
+          conan export recipes/cpython --version=3.9.20
 
       - name: Set CIBW_BEFORE_BUILD to absolute path (macOS and Windows)
         if: runner.os != 'Linux'
