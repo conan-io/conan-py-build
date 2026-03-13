@@ -76,7 +76,7 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `version-file` | Path to a Python file from which to read `__version__` when `[project].version` is dynamic | (none) |
+| `version` | Version provider: `"file"` or `"setuptools_scm"` (see [Dynamic version](#dynamic-version)) | (none) |
 | `conanfile-path` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
 | `wheel.packages` | List of paths (relative to project root) of Python packages to include in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_project_name>"]` |
 | `sdist.include` | List of paths or patterns to add to the sdist | `[]` |
@@ -85,10 +85,56 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
 ### Dynamic version
 
-There is limited support for dynamic version: set `dynamic = ["version"]` in
-`[project]` (no `version` key) and point to a Python file via
-`[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
-backend reads `__version__ = "x.y.z"` from that file.
+Set `dynamic = ["version"]` in `[project]` (no `version` key) and choose a provider via `[tool.conan-py-build].version`:
+
+**From a file** — reads `__version__ = "x.y.z"` from a Python file:
+
+```toml
+[tool.conan-py-build]
+version = "file"
+
+[tool.version]
+file = "src/mypackage/__init__.py"
+```
+
+**From git tags (setuptools-scm)** — resolves version from VCS tags (e.g. `v1.0.0` → `1.0.0`):
+
+```toml
+[tool.conan-py-build]
+version = "setuptools_scm"
+```
+
+The backend reads `[tool.setuptools_scm]` and forwards the following options to
+`setuptools_scm.get_version()`:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `local_scheme` | Controls the local part of the version (after `+`). Set to `"no-local-version"` to strip the `+gHASH` suffix, which is required for PyPI uploads. | `setuptools-scm` default (`"node-and-date"`) |
+| `version_scheme` | How the version string is constructed between tags. Common values: `"guess-next-dev"`, `"post-release"`, `"calver-by-date"`. | `setuptools-scm` default (`"guess-next-dev"`) |
+| `fallback_version` | Static version string used when SCM metadata is unavailable (e.g. building from a tarball without `.git`). | (none — raises error) |
+| `root` | Path to the SCM root relative to `pyproject.toml`. Only needed when the project lives in a subdirectory of the repository (e.g. monorepos). | `"."` (same directory) |
+
+Example with `local_scheme` and `fallback_version`:
+
+```toml
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+```
+
+Example for a monorepo where `.git` is one level up:
+
+```toml
+[tool.setuptools_scm]
+root = ".."
+```
+
+Optionally, set `write_to` to include the generated version file in the sdist:
+
+```toml
+[tool.version.setuptools_scm]
+write_to = "src/mypackage/_version.py"
+```
 
 ### License files (PEP 639)
 

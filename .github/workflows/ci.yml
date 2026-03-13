@@ -98,15 +98,18 @@ jobs:
         run: pip install -e .
       - name: Build wheels
         run: |
+          pip install setuptools-scm
           pip wheel examples/basic --no-build-isolation -w examples/basic/dist/ -vv
+          pip wheel examples/basic-scm --no-build-isolation -w examples/basic-scm/dist/ -vv
           pip wheel examples/basic-pybind11 --no-build-isolation -w examples/basic-pybind11/dist/ -vv
           pip wheel examples/basic-nanobind --no-build-isolation -w examples/basic-nanobind/dist/ -vv
           pip wheel examples/external-sources --no-build-isolation -w examples/external-sources/dist/ -vv
         shell: bash
       - name: Test wheels
         run: |
-          pip install examples/basic/dist/myadder-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl examples/basic-nanobind/dist/myadder_nanobind-*.whl examples/external-sources/dist/hello_bindings-*.whl
+          pip install examples/basic/dist/myadder-*.whl examples/basic-scm/dist/myadder_scm-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl examples/basic-nanobind/dist/myadder_nanobind-*.whl examples/external-sources/dist/hello_bindings-*.whl
           python -c "import myadder; assert myadder.add(2, 3) == 5; assert myadder.add_integers(10, 20) == 30; print('myadder OK')"
+          python -c "import myadder_scm; print(f'version={myadder_scm.__version__}'); assert myadder_scm.__version__; assert myadder_scm.add(2, 3) == 5; print('myadder_scm OK')"
           python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; assert myadder_pybind11.add_integers(10, 20) == 30; assert myadder_pybind11.greet('World').startswith('Hello'); print('myadder_pybind11 OK')"
           python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
           python -c "import myadder_nanobind; assert myadder_nanobind.add(2, 3) == 5; assert myadder_nanobind.add_integers(10, 20) == 30; assert myadder_nanobind.greet('World').startswith('Hello'); print('myadder_nanobind OK')"
@@ -124,6 +127,7 @@ jobs:
           name: wheels-${{ matrix.runner }}
           path: |
             examples/basic/dist/
+            examples/basic-scm/dist/
             examples/basic-pybind11/dist/
             examples/basic-nanobind/dist/
             examples/external-sources/dist/
