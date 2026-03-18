@@ -23,7 +23,6 @@ SHARED_LIB_PATTERNS = ("*.so", "*.so.*", "*.dylib", "*.dylib.*", "*.dll")
 
 
 def _flatten_directory(
-    dep_package_folder: Path,
     src_dir: Path,
     output_dir: Path,
     extension_filter: Optional[tuple] = None,
@@ -102,7 +101,6 @@ def default_wheel_deploy(
             if not src_dir.is_dir():
                 continue
             total += _flatten_directory(
-                pkg_folder,
                 src_dir,
                 output_path,
                 extension_filter=SHARED_LIB_PATTERNS,
@@ -113,7 +111,6 @@ def default_wheel_deploy(
             if not src_dir.is_dir():
                 continue
             total += _flatten_directory(
-                pkg_folder,
                 src_dir,
                 output_path,
                 extension_filter=SHARED_LIB_PATTERNS,
@@ -193,7 +190,7 @@ def fix_linux_rpath_for_libs(staging_dir: Path) -> None:
         except FileNotFoundError:
             if not warned:
                 print(
-                    "  WARNING: patchelf not found; Linux extension may not load "
+                    "  WARNING: patchelf not found. Linux extension may not load "
                     "shared libs. Install patchelf or run auditwheel repair on the wheel.",
                     flush=True,
                 )

@@ -111,11 +111,10 @@ If `wheel.packages` is not set, the backend includes a single package at
 
 If your extension links to shared libs from Conan, the backend bundles them in
 the wheel:
-- **macOS** — libs in `package_name/.libs/`. Locations are repaired using
-  `install_name_tool` adds `@loader_path/.libs` so extensions find them.
-- **Linux** — same layout. Locations are repaired using `patchelf --add-rpath
-  '$ORIGIN/.libs'` (requires patchelf installed, or use auditwheel repair on the
-  wheel).
+- **macOS** — libs in `package_name/.libs/`. `install_name_tool` adds
+  `@loader_path/.libs` so extensions find them.
+- **Linux** — same layout. `patchelf --add-rpath '$ORIGIN/.libs'` (requires
+  patchelf installed, or use auditwheel repair on the wheel).
 - **Windows** — DLLs next to the `.pyd`. The loader finds them with no extra
   step.
 
