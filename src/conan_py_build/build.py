@@ -2,6 +2,7 @@ import ast
 import io
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 from contextlib import contextmanager
@@ -12,6 +13,13 @@ from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
+
+from conan_py_build.wheel_deploy import (
+    default_wheel_deploy,
+    fix_linux_rpath_for_libs,
+    fix_macos_rpath_for_libs,
+    package_dirs_with_extensions,
+)
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
 from pyproject_metadata import StandardMetadata
@@ -479,6 +487,29 @@ def _do_build_wheel(
         ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
         dirs_exist_ok=True,
     )
+
+    # Wheel deploy: copy shared libs from host deps into each package's .libs
+    # (delocate-style) TODO: discuss if we should allow user to configure deploy
+    # (e.g. custom deployer script, exclude refs) via pyproject.toml
+    deps_graph = export_result.get("graph")
+    if deps_graph is not None:
+        with tempfile.TemporaryDirectory() as tmp:
+            deploy_output = Path(tmp)
+            default_wheel_deploy(graph=deps_graph, output_folder=deploy_output)
+            if deploy_output.exists() and any(deploy_output.iterdir()):
+                # Windows: put DLLs next to .pyd (loader finds them). Unix: use .libs/
+                use_libs_subdir = sys.platform != "win32"
+                for pkg_dir in package_dirs_with_extensions(staging_dir):
+                    pkg_libs = pkg_dir / ".libs" if use_libs_subdir else pkg_dir
+                    pkg_libs.mkdir(parents=True, exist_ok=True)
+                    for f in deploy_output.iterdir():
+                        dest = pkg_libs / f.name
+                        if f.is_file():
+                            shutil.copy2(f, dest)
+                        elif f.is_dir():
+                            shutil.copytree(f, dest, dirs_exist_ok=True)
+                fix_macos_rpath_for_libs(staging_dir)
+                fix_linux_rpath_for_libs(staging_dir)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)

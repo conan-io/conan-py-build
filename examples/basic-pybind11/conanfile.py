@@ -7,6 +7,7 @@ class MyadderPybind11Conan(ConanFile):
     version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
+    default_options = {"fmt/*:shared": True}
 
     def layout(self):
         cmake_layout(self)
