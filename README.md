@@ -129,12 +129,11 @@ If `wheel.packages` is not set, the backend includes a single package at
 If your extension links to shared libs from Conan, the backend runs Conan’s
 built-in **`runtime_deploy`** during `conan build`, then copies those artifacts into
 the wheel layout:
-- **macOS** — libs in `package_name/.libs/`. `install_name_tool` adds
-  `@loader_path/.libs` so extensions find them.
-- **Linux** — same layout. `patchelf --add-rpath '$ORIGIN/.libs'` (requires
-  patchelf installed, or use auditwheel repair on the wheel).
-- **Windows** — DLLs next to the `.pyd`. The loader finds them with no extra
-  step.
+- **All platforms** — shared libs live in the **same directory** as the
+  extension (`.so` / `.pyd`). **macOS** — `install_name_tool` adds
+  `@loader_path`. **Linux** — `patchelf --add-rpath '$ORIGIN'` (requires
+  patchelf, or auditwheel repair). **Windows** — the DLL loader already looks
+  next to the `.pyd`.
 
 **Conan recipe path.** If your recipe lives outside the project root (e.g.
 `subfolder/conanfile.py`), set `conanfile-path` so the backend runs

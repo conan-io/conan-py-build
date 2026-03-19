@@ -138,7 +138,7 @@ def test_move_deploy_to_wheel_copies_shared_libs(tmp_path):
     if sys.platform == "win32":
         assert (pkg / "dep.dll").read_text() == "dll"
     else:
-        assert (pkg / ".libs" / "libdep.so").read_text() == "so"
+        assert (pkg / "libdep.so").read_text() == "so"
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):
