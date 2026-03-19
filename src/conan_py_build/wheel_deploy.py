@@ -13,8 +13,9 @@ def move_deploy_to_wheel(
 
     Shared libs are placed in the **same directory** as each native extension
     (``.so`` / ``.pyd``) on every platform — same idea as Windows DLL search.
-    On macOS/Linux, RPATH is set to ``@loader_path`` / ``$ORIGIN`` so the loader
-    finds colocated ``.so``/``.dylib`` files.
+    On macOS/Linux, RPATH is set to ``@loader_path`` / ``$ORIGIN`` so the dynamic
+    loader can resolve ``.so`` / ``.dylib`` in the **same directory** as each
+    binary under staging.
     """
     deploy_folder = Path(deploy_folder)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
@@ -27,7 +28,7 @@ def move_deploy_to_wheel(
                 shutil.copy2(f, dest)
             elif f.is_dir():
                 shutil.copytree(f, dest, dirs_exist_ok=True)
-    _fix_unix_rpath_for_colocated_libs(staging_dir)
+    _patch_staging_rpath_for_wheel_libs(staging_dir)
 
 
 def package_dirs_with_extensions(staging_dir: Path) -> set:
@@ -40,8 +41,8 @@ def package_dirs_with_extensions(staging_dir: Path) -> set:
     return package_dirs
 
 
-def _fix_unix_rpath_for_colocated_libs(staging_dir: Path) -> None:
-    """macOS/Linux: ensure extensions find shared libs in the same directory."""
+def _patch_staging_rpath_for_wheel_libs(staging_dir: Path) -> None:
+    """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` for libs in the wheel staging tree."""
     if sys.platform == "darwin":
         rpath = "@loader_path"
         globs = [staging_dir.rglob(p) for p in ("*.so", "*.dylib")]
