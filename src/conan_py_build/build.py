@@ -546,7 +546,6 @@ def _do_build_wheel(
         dirs_exist_ok=True,
     )
 
-    # Bundle shared libs from ``conan build``'s runtime_deploy output into the wheel tree.
     move_deploy_to_wheel(runtime_deploy_dir, staging_dir)
 
     # Create dist-info
