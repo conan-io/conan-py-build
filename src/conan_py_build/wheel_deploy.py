@@ -85,14 +85,6 @@ def package_dirs_with_extensions(staging_dir: Path) -> set:
     return package_dirs
 
 
-def _install_name_tool_add_rpath(binary: Path, rpath: str) -> None:
-    subprocess.run(
-        ["install_name_tool", "-add_rpath", rpath, str(binary)],
-        check=True,
-        capture_output=True,
-    )
-
-
 def fix_macos_rpath_for_libs(staging_dir: Path) -> None:
     if sys.platform != "darwin":
         return
@@ -102,7 +94,11 @@ def fix_macos_rpath_for_libs(staging_dir: Path) -> None:
             if ".libs" in path.parts or path.is_symlink():
                 continue
             try:
-                _install_name_tool_add_rpath(path, rpath)
+                subprocess.run(
+                    ["install_name_tool", "-add_rpath", rpath, str(path)],
+                    check=True,
+                    capture_output=True,
+                )
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
 
