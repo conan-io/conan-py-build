@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 
 
-def apply_deploy_folder_to_wheel_staging(
+def move_deploy_to_wheel(
     deploy_folder: Path, staging_dir: Path
 ) -> None:
     """

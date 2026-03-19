@@ -13,7 +13,7 @@ from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
 
-from conan_py_build.wheel_deploy import apply_deploy_folder_to_wheel_staging
+from conan_py_build.wheel_deploy import move_deploy_to_wheel
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
 from pyproject_metadata import StandardMetadata
@@ -547,7 +547,7 @@ def _do_build_wheel(
     )
 
     # Bundle shared libs from ``conan build``'s runtime_deploy output into the wheel tree.
-    apply_deploy_folder_to_wheel_staging(runtime_deploy_dir, staging_dir)
+    move_deploy_to_wheel(runtime_deploy_dir, staging_dir)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)

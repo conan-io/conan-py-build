@@ -6,7 +6,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import apply_deploy_folder_to_wheel_staging
+from conan_py_build.wheel_deploy import move_deploy_to_wheel
 
 from conan_py_build.build import (
     _parse_config,
@@ -122,7 +122,7 @@ build-backend = "conan_py_build.build"
         _resolve_version(meta, tmp_path)
 
 
-def test_apply_deploy_folder_to_wheel_staging_copies_shared_libs(tmp_path):
+def test_move_deploy_to_wheel_copies_shared_libs(tmp_path):
     deploy = tmp_path / "deploy"
     deploy.mkdir()
     (deploy / "libdep.so").write_text("so", encoding="utf-8")
@@ -134,7 +134,7 @@ def test_apply_deploy_folder_to_wheel_staging_copies_shared_libs(tmp_path):
         (deploy / "dep.dll").write_text("dll", encoding="utf-8")
     else:
         (pkg / "ext.so").write_text("ext", encoding="utf-8")
-    apply_deploy_folder_to_wheel_staging(deploy, staging)
+    move_deploy_to_wheel(deploy, staging)
     if sys.platform == "win32":
         assert (pkg / "dep.dll").read_text() == "dll"
     else:
