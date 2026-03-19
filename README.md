@@ -76,7 +76,8 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `version-file` | Path to a Python file from which to read `__version__` when `[project].version` is dynamic | (none) |
+| `version.file` | Path to a Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
+| `version.provider` | Set to `"setuptools_scm"` to resolve version from git tags (see [Dynamic version](#dynamic-version)). Mutually exclusive with `version.file`. | (none) |
 | `conanfile-path` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
 | `wheel.packages` | List of paths (relative to project root) of Python packages to include in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_project_name>"]` |
 | `sdist.include` | List of paths or patterns to add to the sdist | `[]` |
@@ -85,10 +86,26 @@ Configure in `pyproject.toml` under `[tool.conan-py-build]`:
 
 ### Dynamic version
 
-There is limited support for dynamic version: set `dynamic = ["version"]` in
-`[project]` (no `version` key) and point to a Python file via
-`[tool.conan-py-build].version-file` (e.g. `"src/mypackage/__init__.py"`). The
-backend reads `__version__ = "x.y.z"` from that file.
+Set `dynamic = ["version"]` in `[project]` (no `version` key) and configure the version source in `[tool.conan-py-build.version]`:
+
+**From a file** — reads `__version__ = "x.y.z"` from a Python file:
+
+```toml
+[tool.conan-py-build.version]
+file = "src/mypackage/__init__.py"
+```
+
+**From git tags (setuptools-scm)** — resolves version from VCS tags (e.g. `v1.0.0` → `1.0.0`):
+
+```toml
+[tool.conan-py-build.version]
+provider = "setuptools_scm"
+```
+
+The `setuptools-scm` options are configured in `[tool.setuptools_scm]` — see the
+[setuptools-scm docs](https://setuptools-scm.readthedocs.io/) for available options.
+
+> **Note:** `version.file` and `provider = "setuptools_scm"` are mutually exclusive.
 
 ### License files (PEP 639)
 

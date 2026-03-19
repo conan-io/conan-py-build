@@ -1,4 +1,6 @@
 """Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
+import os
+import subprocess
 import tarfile
 import types
 import zipfile
@@ -9,10 +11,8 @@ import pytest
 from conan_py_build.build import build_sdist, build_wheel
 
 
-def make_integration_project(path: Path) -> None:
-    """Create a minimal conan-py-build project"""
-
-    (path / "pyproject.toml").write_text("""[project]
+_DEFAULT_PYPROJECT = """\
+[project]
 name = "integration-pkg"
 version = "0.1.0"
 description = "For integration tests"
@@ -21,11 +21,10 @@ license-files = ["LICENSE"]
 [build-system]
 requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
-""", encoding="utf-8")
+"""
 
-    (path / "LICENSE").write_text("MIT", encoding="utf-8")
-
-    (path / "conanfile.py").write_text("""from conan import ConanFile
+_DEFAULT_CONANFILE = """\
+from conan import ConanFile
 from conan.tools.cmake import cmake_layout
 
 
@@ -43,15 +42,30 @@ class Pkg(ConanFile):
 
     def build(self):
         pass
-""", encoding="utf-8")
+"""
 
-    (path / "CMakeLists.txt").write_text("""cmake_minimum_required(VERSION 3.15)
-project(integration_pkg)
-""", encoding="utf-8")
 
-    (path / "src" / "integration_pkg" / "__init__.py").parent.mkdir(parents=True)
-
-    (path / "src" / "integration_pkg" / "__init__.py").write_text("", encoding="utf-8")
+def make_integration_project(
+    path: Path,
+    *,
+    pyproject_toml: str = _DEFAULT_PYPROJECT,
+    conanfile: str = _DEFAULT_CONANFILE,
+    pkg_name: str = "integration_pkg",
+    init_content: str = "",
+    license_text: str = "MIT",
+) -> None:
+    """Create a minimal conan-py-build project."""
+    path.mkdir(exist_ok=True)
+    (path / "pyproject.toml").write_text(pyproject_toml, encoding="utf-8")
+    (path / "conanfile.py").write_text(conanfile, encoding="utf-8")
+    (path / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.15)\nproject(x)\n", encoding="utf-8"
+    )
+    if license_text:
+        (path / "LICENSE").write_text(license_text, encoding="utf-8")
+    pkg = path / "src" / pkg_name
+    pkg.mkdir(parents=True, exist_ok=True)
+    (pkg / "__init__.py").write_text(init_content, encoding="utf-8")
 
 
 @pytest.fixture
@@ -149,3 +163,78 @@ def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     assert profile_path.is_file(), "conan-py-build.profile should be created when autodetect is set"
     content = profile_path.read_text()
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
+
+
+def _git_init_and_tag(cwd, tag):
+    """Initialise a throw-away git repo, commit everything and create *tag*."""
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "test",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "test",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    for cmd in (
+        ["git", "init"],
+        ["git", "add", "."],
+        ["git", "commit", "-m", "init"],
+        ["git", "tag", tag],
+    ):
+        subprocess.run(cmd, cwd=cwd, check=True, env=env, capture_output=True)
+
+
+def test_build_sdist_version_file(tmp_path, monkeypatch):
+    """Integration: build_sdist resolves dynamic version from [tool.conan-py-build.version].file."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pkg_name="file_pkg", pyproject_toml="""\
+[project]
+name = "file-pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build.version]
+file = "src/file_pkg/__init__.py"
+""", init_content='__version__ = "2.3.4"')
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    assert build_sdist(str(sdist_dir)) == "file-pkg-2.3.4.tar.gz"
+
+
+def test_build_sdist_version_scm(tmp_path, monkeypatch):
+    """Integration: build_sdist resolves dynamic version from setuptools_scm (git tag)."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pkg_name="scm_pkg", pyproject_toml="""\
+[project]
+name = "scm-pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build.version]
+provider = "setuptools_scm"
+
+[tool.setuptools_scm]
+version_file = "src/scm_pkg/_version.py"
+""")
+    _git_init_and_tag(proj, "v3.0.0")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    filename = build_sdist(str(sdist_dir))
+    assert filename == "scm-pkg-3.0.0.tar.gz"
+
+    with tarfile.open(sdist_dir / filename, "r:gz") as tar:
+        names = tar.getnames()
+        assert "scm-pkg-3.0.0/src/scm_pkg/_version.py" in names

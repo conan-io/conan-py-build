@@ -126,10 +126,38 @@ def _resolve_conanfile_path(conanfile_path: str, source_dir: Path) -> Path:
     return Path(full_path)
 
 
-def _get_version_from_config(source_dir: Path) -> Optional[str]:
-    """Read version from [tool.conan-py-build] version-file if set. Reads pyproject from source_dir."""
-    tool = _get_tool_config(source_dir)
-    version_file = tool.get("version-file")
+def _validate_version_config(source_dir: Path) -> None:
+    """Validate [tool.conan-py-build.version] settings."""
+    version_cfg = _get_tool_config(source_dir).get("version", {})
+    provider = version_cfg.get("provider")
+    has_file = bool(version_cfg.get("file"))
+
+    if provider is not None and provider != "setuptools_scm":
+        raise RuntimeError(
+            f"[tool.conan-py-build.version].provider must be 'setuptools_scm', "
+            f"got {provider!r}. To read version from a file, use version.file instead."
+        )
+
+    if has_file and provider:
+        raise RuntimeError(
+            "[tool.conan-py-build.version].file and provider = 'setuptools_scm' "
+            "are mutually exclusive. Use one or the other."
+        )
+
+    if not has_file and not provider:
+        raise RuntimeError(
+            "[tool.conan-py-build.version] must define 'file' or 'provider'."
+        )
+
+
+def _uses_setuptools_scm(source_dir: Path) -> bool:
+    """True when [tool.conan-py-build.version].provider is 'setuptools_scm'."""
+    return _get_tool_config(source_dir).get("version", {}).get("provider") == "setuptools_scm"
+
+
+def _get_version_from_file(source_dir: Path) -> Optional[str]:
+    """Read __version__ from the path in [tool.conan-py-build.version].file."""
+    version_file = _get_tool_config(source_dir).get("version", {}).get("file")
     if not version_file:
         return None
     resolved = (source_dir / version_file).resolve()
@@ -137,9 +165,32 @@ def _get_version_from_config(source_dir: Path) -> Optional[str]:
         resolved.relative_to(source_dir.resolve())
     except ValueError:
         raise RuntimeError(
-            f"version-file must be inside project: {version_file!r}"
+            f"[tool.conan-py-build.version].file must be inside project: {version_file!r}"
         )
     return _read_version_from_file(resolved)
+
+
+def _get_version_from_scm(source_dir: Path) -> str:
+    """Get version from setuptools-scm."""
+    try:
+        from setuptools_scm import Configuration, _get_version
+    except ImportError:
+        raise RuntimeError(
+            "setuptools-scm is required when provider = 'setuptools_scm'. "
+            "Add 'setuptools-scm' to [build-system].requires."
+        )
+
+    config = Configuration.from_file(str(source_dir / "pyproject.toml"))
+    try:
+        version = _get_version(config, force_write_version_files=True)
+    except TypeError:
+        version = _get_version(config)
+    if version is None:
+        raise LookupError(
+            "setuptools-scm could not detect a version. "
+            "Build from a git repo with tags, or from an sdist."
+        )
+    return version
 
 
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
@@ -147,12 +198,16 @@ def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     dynamic = project_metadata.get("dynamic")
     version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
 
-    if not version:
-        version = _get_version_from_config(source_dir)
-        if version_is_dynamic and not version:
+    if not version and version_is_dynamic:
+        _validate_version_config(source_dir)
+        if _uses_setuptools_scm(source_dir):
+            version = _get_version_from_scm(source_dir)
+        else:
+            version = _get_version_from_file(source_dir)
+        if not version:
             raise RuntimeError(
                 "dynamic = [\"version\"] but version could not be resolved. "
-                "Set [tool.conan-py-build] version-file to a file with __version__ = \"x.y.z\" at module level."
+                "Set [tool.conan-py-build.version].file or provider = 'setuptools_scm'."
             )
 
     version = version or "0.0.0"
@@ -283,14 +338,17 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
 
 # PEP 517 Hooks
 
-
 def get_requires_for_build_wheel(config_settings: Optional[dict] = None) -> list:
     """PEP 517 hook: Return additional dependencies needed to build a wheel."""
+    if _uses_setuptools_scm(Path.cwd()):
+        return ["setuptools-scm"]
     return []
 
 
 def get_requires_for_build_sdist(config_settings: Optional[dict] = None) -> list:
     """PEP 517 hook: Return additional dependencies needed to build an sdist."""
+    if _uses_setuptools_scm(Path.cwd()):
+        return ["setuptools-scm"]
     return []
 
 
@@ -576,6 +634,11 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     conanfile_path = tool.get("conanfile-path") or "."
     resolved_conanfile = _resolve_conanfile_path(conanfile_path, source_dir)
     default_include.append(resolved_conanfile.relative_to(source_dir).as_posix())
+
+    if _uses_setuptools_scm(source_dir):
+        version_file = _read_pyproject(source_dir).get("tool", {}).get("setuptools_scm", {}).get("version_file")
+        if version_file:
+            default_include.append(version_file)
 
     default_exclude = [
         "__pycache__",
