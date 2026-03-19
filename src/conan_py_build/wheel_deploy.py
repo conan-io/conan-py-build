@@ -6,74 +6,10 @@ import sys
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-_SHARED_LIB_SUFFIXES = (".so*", ".dylib*", ".dll*")
 
-
-def _flatten_directory(
-    src_dir: Union[os.PathLike, str],
-    output_dir: Union[os.PathLike, str],
-    symlinks: bool,
-    extension_filter: Optional[Tuple[str, ...]] = None,
-) -> int:
-    src_root = os.path.normpath(os.path.abspath(os.fspath(src_dir)))
-    out_root = Path(output_dir)
-    file_count = 0
-    for src_dirpath, _, fnames in os.walk(src_root, followlinks=symlinks):
-        rel_path = os.path.relpath(src_dirpath, src_root)
-        for name in fnames:
-            if extension_filter and not any(
-                fnmatch.fnmatch(name, f"*{ext}") for ext in extension_filter
-            ):
-                continue
-            src_filepath = os.path.join(src_dirpath, name)
-            if not symlinks and os.path.islink(src_filepath):
-                continue
-            dest = out_root / rel_path / name
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                shutil.copy2(src_filepath, dest, follow_symlinks=not symlinks)
-                file_count += 1
-            except OSError as e:
-                if "WinError 1314" in str(e):
-                    raise RuntimeError(
-                        "wheel_deploy: Windows symlinks require admin privileges "
-                        "or Developer mode. Use symlinks=False to disable."
-                    ) from e
-                raise
-    return file_count
-
-
-def _resolve_dep_dir(package_folder: Path, dirname: str) -> Path:
-    return Path(dirname) if os.path.isabs(dirname) else package_folder / dirname
-
-
-def default_wheel_deploy(
-    graph,
-    output_folder: "Path | str",
-    symlinks: bool = True,
-    **kwargs,
+def apply_deploy_folder_to_wheel_staging(
+    deploy_folder: Path, staging_dir: Path
 ) -> None:
-    output_path = Path(output_folder)
-    output_path.mkdir(parents=True, exist_ok=True)
-    conanfile = graph.root.conanfile
-    for req, dep in conanfile.dependencies.host.items():
-        if not req.run:
-            continue
-        if dep.package_folder is None:
-            continue
-        cpp_info = dep.cpp_info.aggregated_components()
-        pkg = Path(dep.package_folder)
-        total = 0
-        for dirname in (*(cpp_info.bindirs or ()), *(cpp_info.libdirs or ())):
-            d = _resolve_dep_dir(pkg, dirname)
-            if not d.is_dir():
-                continue
-            total += _flatten_directory(d, output_path, symlinks, _SHARED_LIB_SUFFIXES)
-        if total:
-            print(f"  Wheel deploy: copied {total} shared lib(s) from {dep.ref}", flush=True)
-
-
-def apply_deploy_folder_to_wheel_staging(deploy_folder: Path, staging_dir: Path) -> None:
     """
     Copy shared libraries from a Conan ``runtime_deploy`` output folder into each
     Python package directory that contains native extensions (``.so`` / ``.pyd``).
