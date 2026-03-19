@@ -126,8 +126,9 @@ If `wheel.packages` is not set, the backend includes a single package at
 
 ### Support for shared library builds
 
-If your extension links to shared libs from Conan, the backend bundles them in
-the wheel:
+If your extension links to shared libs from Conan, the backend runs Conan’s
+built-in **`runtime_deploy`** during `conan build`, then copies those artifacts into
+the wheel layout:
 - **macOS** — libs in `package_name/.libs/`. `install_name_tool` adds
   `@loader_path/.libs` so extensions find them.
 - **Linux** — same layout. `patchelf --add-rpath '$ORIGIN/.libs'` (requires

@@ -1,9 +1,12 @@
 """Unit tests for the conan_py_build build backend."""
+import sys
 from pathlib import Path
 
 import pytest
 
 from conan.errors import ConanException
+
+from conan_py_build.wheel_deploy import apply_deploy_folder_to_wheel_staging
 
 from conan_py_build.build import (
     _parse_config,
@@ -117,6 +120,25 @@ build-backend = "conan_py_build.build"
     meta = {"name": "pkg", "dynamic": ["version"]}
     with pytest.raises(RuntimeError, match="must define 'file' or 'provider'"):
         _resolve_version(meta, tmp_path)
+
+
+def test_apply_deploy_folder_to_wheel_staging_copies_shared_libs(tmp_path):
+    deploy = tmp_path / "deploy"
+    deploy.mkdir()
+    (deploy / "libdep.so").write_text("so", encoding="utf-8")
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    if sys.platform == "win32":
+        (pkg / "ext.pyd").write_text("pyd", encoding="utf-8")
+        (deploy / "dep.dll").write_text("dll", encoding="utf-8")
+    else:
+        (pkg / "ext.so").write_text("ext", encoding="utf-8")
+    apply_deploy_folder_to_wheel_staging(deploy, staging)
+    if sys.platform == "win32":
+        assert (pkg / "dep.dll").read_text() == "dll"
+    else:
+        assert (pkg / ".libs" / "libdep.so").read_text() == "so"
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):

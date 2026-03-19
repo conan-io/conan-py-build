@@ -73,6 +73,31 @@ def default_wheel_deploy(
             print(f"  Wheel deploy: copied {total} shared lib(s) from {dep.ref}", flush=True)
 
 
+def apply_deploy_folder_to_wheel_staging(deploy_folder: Path, staging_dir: Path) -> None:
+    """
+    Copy shared libraries from a Conan ``runtime_deploy`` output folder into each
+    Python package directory that contains native extensions (``.so`` / ``.pyd``).
+
+    On Windows, DLLs are placed next to the extension; on Unix, under ``.libs/``.
+    Then adjusts RPATH on macOS/Linux so extensions can load those libraries.
+    """
+    deploy_folder = Path(deploy_folder)
+    if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
+        return
+    use_libs_subdir = sys.platform != "win32"
+    for pkg_dir in package_dirs_with_extensions(staging_dir):
+        pkg_libs = pkg_dir / ".libs" if use_libs_subdir else pkg_dir
+        pkg_libs.mkdir(parents=True, exist_ok=True)
+        for f in deploy_folder.iterdir():
+            dest = pkg_libs / f.name
+            if f.is_file():
+                shutil.copy2(f, dest)
+            elif f.is_dir():
+                shutil.copytree(f, dest, dirs_exist_ok=True)
+    fix_macos_rpath_for_libs(staging_dir)
+    fix_linux_rpath_for_libs(staging_dir)
+
+
 def package_dirs_with_extensions(staging_dir: Path) -> set:
     package_dirs = set()
     for pattern in ("*.so", "*.pyd"):

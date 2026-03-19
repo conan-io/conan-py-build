@@ -28,7 +28,7 @@ classifiers = [
 keywords = ["build", "backend", "pep517", "conan", "c++", "cmake"]
 
 dependencies = [
-    "conan>=2.0",
+    "conan>=2.5",
     "distlib>=0.3.0",
     "packaging",
     "pyproject-metadata",

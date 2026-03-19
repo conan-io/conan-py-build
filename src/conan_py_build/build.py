@@ -2,7 +2,6 @@ import ast
 import io
 import os
 import shutil
-import sys
 import tarfile
 import tempfile
 from contextlib import contextmanager
@@ -14,12 +13,7 @@ from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
 
-from conan_py_build.wheel_deploy import (
-    default_wheel_deploy,
-    fix_linux_rpath_for_libs,
-    fix_macos_rpath_for_libs,
-    package_dirs_with_extensions,
-)
+from conan_py_build.wheel_deploy import apply_deploy_folder_to_wheel_staging
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
 from pyproject_metadata import StandardMetadata
@@ -457,6 +451,8 @@ def _do_build_wheel(
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
+    # Conan built-in deployer: copies host deps' shared libs before build(); see wheel_deploy stage step.
+    runtime_deploy_dir = (base_dir / "runtime_deploy").resolve()
 
     conan_api = ConanAPI()
     cli = Cli(conan_api)
@@ -499,6 +495,10 @@ def _do_build_wheel(
         resolved_conanfile,
         "-of",
         str(staging_dir),
+        "-d",
+        "runtime_deploy",
+        "--deployer-folder",
+        str(runtime_deploy_dir),
         "-c",
         build_folder_conf,
         "-c",
@@ -546,28 +546,8 @@ def _do_build_wheel(
         dirs_exist_ok=True,
     )
 
-    # Wheel deploy: copy shared libs from host deps into each package's .libs
-    # (delocate-style) TODO: discuss if we should allow user to configure deploy
-    # (e.g. custom deployer script, exclude refs) via pyproject.toml
-    deps_graph = export_result.get("graph")
-    if deps_graph is not None:
-        with tempfile.TemporaryDirectory() as tmp:
-            deploy_output = Path(tmp)
-            default_wheel_deploy(graph=deps_graph, output_folder=deploy_output)
-            if deploy_output.exists() and any(deploy_output.iterdir()):
-                # Windows: put DLLs next to .pyd (loader finds them). Unix: use .libs/
-                use_libs_subdir = sys.platform != "win32"
-                for pkg_dir in package_dirs_with_extensions(staging_dir):
-                    pkg_libs = pkg_dir / ".libs" if use_libs_subdir else pkg_dir
-                    pkg_libs.mkdir(parents=True, exist_ok=True)
-                    for f in deploy_output.iterdir():
-                        dest = pkg_libs / f.name
-                        if f.is_file():
-                            shutil.copy2(f, dest)
-                        elif f.is_dir():
-                            shutil.copytree(f, dest, dirs_exist_ok=True)
-                fix_macos_rpath_for_libs(staging_dir)
-                fix_linux_rpath_for_libs(staging_dir)
+    # Bundle shared libs from ``conan build``'s runtime_deploy output into the wheel tree.
+    apply_deploy_folder_to_wheel_staging(runtime_deploy_dir, staging_dir)
 
     # Create dist-info
     _create_dist_info(staging_dir, project_metadata, source_dir)
