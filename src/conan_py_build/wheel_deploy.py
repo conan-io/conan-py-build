@@ -14,7 +14,7 @@ def apply_deploy_folder_to_wheel_staging(
     Copy shared libraries from a Conan ``runtime_deploy`` output folder into each
     Python package directory that contains native extensions (``.so`` / ``.pyd``).
 
-    On Windows, DLLs are placed next to the extension; on Unix, under ``.libs/``.
+    On Windows, DLLs are placed next to the extension, on Unix, under ``.libs/``.
     Then adjusts RPATH on macOS/Linux so extensions can load those libraries.
     """
     deploy_folder = Path(deploy_folder)
