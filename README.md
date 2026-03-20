@@ -88,7 +88,7 @@ Configure options in `pyproject.toml` (nested under `[tool.conan-py-build]`):
 | `extra-profile`, `extra-profile-host`, … | `[tool.conan-py-build]` | Extra Conan profile file(s) — see [Profiles](#profiles) | (none) |
 | `version.file` | `[tool.conan-py-build.version]` | Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | Set to `"setuptools_scm"` for version from git tags. Mutually exclusive with `version.file`. | (none) |
-| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_name>"]` (project name with `-` → `_`) |
+| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_name>"]` |
 | `include` / `exclude` | `[tool.conan-py-build.sdist]` | Paths or glob patterns to add to or remove from the sdist | `[]` / `[]` |
 
 ### Dynamic version
