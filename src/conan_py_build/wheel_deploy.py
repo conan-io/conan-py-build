@@ -35,8 +35,6 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
     Shared libs end up **next to** the extension module on every platform;
     ``patch_rpath`` (Unix) uses ``$ORIGIN`` / ``@loader_path`` accordingly.
     """
-    deploy_folder = Path(deploy_folder)
-    staging_dir = Path(staging_dir)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
         return
 
