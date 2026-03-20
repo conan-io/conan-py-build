@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 def _is_python_extension_module(path: Path) -> bool:
+    """True if *path* is a real file whose name matches ``EXTENSION_SUFFIXES``."""
     if path.is_symlink():
         return False
     return any(
@@ -16,7 +17,7 @@ def _is_python_extension_module(path: Path) -> bool:
 
 
 def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
-    """Directories under *staging_dir* that contain a Python extension module file."""
+    """Parent dirs of each Python extension module under *staging_dir*."""
     package_dirs: set[Path] = set()
     for pattern in ("*.so", "*.pyd"):
         for path in staging_dir.rglob(pattern):
@@ -28,13 +29,7 @@ def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
 
 
 def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
-    """
-    Copy Conan's ``runtime_deploy`` output into **each directory** under
-    *staging_dir* that contains a native extension (``.so`` / ``.pyd``).
-
-    Shared libs end up **next to** the extension module on every platform;
-    ``patch_rpath`` (Unix) uses ``$ORIGIN`` / ``@loader_path`` accordingly.
-    """
+    """Merge ``runtime_deploy`` into each package dir that has a native extension."""
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
         return
 
@@ -43,10 +38,7 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
 
 
 def patch_rpath(staging_dir: Path) -> None:
-    """
-    macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` on Python extension modules
-    (colocated shared libs from ``runtime_deploy``).
-    """
+    """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` to extension ``.so`` files."""
     if sys.platform == "darwin":
         rpath = "@loader_path"
         patcher = "install_name_tool"
