@@ -137,16 +137,20 @@ def test_patch_rpath(tmp_path, monkeypatch):
     mod.write_text("ext")
     patch_rpath(tmp_path / "staging")
     assert calls == [
-        ["patchelf", "--add-rpath", "$ORIGIN/..", str(mod)],
+        ["patchelf", "--add-rpath", "$ORIGIN", str(mod)],
     ]
 
 
-def test_move_deploy_to_wheel_merges_deploy_into_staging(tmp_path):
+def test_move_deploy_to_wheel_copies_shared_libs_next_to_extension(tmp_path):
     deploy = tmp_path / "deploy"
     deploy.mkdir()
     (deploy / "libdep.so").write_text("so", encoding="utf-8")
-    move_deploy_to_wheel(deploy, tmp_path / "staging")
-    assert (tmp_path / "staging" / "libdep.so").read_text() == "so"
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "ext.pyd").write_text("pyd", encoding="utf-8")
+    move_deploy_to_wheel(deploy, staging)
+    assert (pkg / "libdep.so").read_text() == "so"
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):

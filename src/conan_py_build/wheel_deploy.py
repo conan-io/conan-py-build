@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib.machinery
 import shutil
 import subprocess
@@ -5,18 +7,41 @@ import sys
 from pathlib import Path
 
 
+def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
+    """Directories under *staging_dir* that contain a ``.so`` / ``.pyd`` (real files)."""
+    package_dirs: set[Path] = set()
+    for pattern in ("*.so", "*.pyd"):
+        for path in staging_dir.rglob(pattern):
+            if not path.is_file() or path.is_symlink():
+                continue
+            package_dirs.add(path.parent)
+    return package_dirs
+
+
 def move_deploy_to_wheel(
     deploy_folder: Path, staging_dir: Path
 ) -> None:
     """
-    Move contents of Conan's runtime_deploy to the wheel staging root.
+    Copy Conan's ``runtime_deploy`` output into **each directory** under
+    *staging_dir* that contains a native extension (``.so`` / ``.pyd``).
+
+    Shared libs end up **next to** the extension module on every platform;
+    ``patch_rpath`` (Unix) uses ``$ORIGIN`` / ``@loader_path`` accordingly.
     """
     deploy_folder = Path(deploy_folder)
     staging_dir = Path(staging_dir)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
         return
     staging_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(deploy_folder, staging_dir, dirs_exist_ok=True)
+
+    for pkg_dir in _package_dirs_with_native_extensions(staging_dir):
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        for f in deploy_folder.iterdir():
+            dest = pkg_dir / f.name
+            if f.is_file():
+                shutil.copy2(f, dest)
+            elif f.is_dir():
+                shutil.copytree(f, dest, dirs_exist_ok=True)
 
 
 def _is_python_extension_module(path: Path) -> bool:
@@ -27,14 +52,15 @@ def _is_python_extension_module(path: Path) -> bool:
 
 def patch_rpath(staging_dir: Path) -> None:
     """
-    macOS/Linux: add ``@loader_path/..`` / ``$ORIGIN/..`` on Python extension modules.
+    macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` on Python extension modules
+    (colocated shared libs from ``runtime_deploy``).
     """
     if sys.platform == "darwin":
-        rpath = "@loader_path/.."
+        rpath = "@loader_path"
         patcher = "install_name_tool"
         arguments = ["-add_rpath", rpath]
     elif sys.platform == "linux":
-        rpath = "$ORIGIN/.."
+        rpath = "$ORIGIN"
         patcher = "patchelf"
         arguments = ["--add-rpath", rpath]
     else:
