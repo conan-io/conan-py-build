@@ -39,7 +39,6 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
     staging_dir = Path(staging_dir)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
         return
-    staging_dir.mkdir(parents=True, exist_ok=True)
 
     for pkg_dir in _package_dirs_with_native_extensions(staging_dir):
         shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
