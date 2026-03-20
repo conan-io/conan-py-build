@@ -201,9 +201,10 @@ profile, set
 
 ### Support for shared library builds
 
-If your extension links to shared libs from Conan, the backend runs Conan’s
-built-in **`runtime_deploy`** during `conan build`, then copies those artifacts into
-the wheel layout.
+If your extension links to shared libs from Conan, the backend collects them
+during the build and merges that output into the **wheel staging root** next to
+your packages (RPATH is fixed on the extension to point at the parent directory so
+those libs resolve).
 
 ## Examples
 

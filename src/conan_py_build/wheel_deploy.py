@@ -9,36 +9,14 @@ def move_deploy_to_wheel(
     deploy_folder: Path, staging_dir: Path
 ) -> None:
     """
-    Copy shared libraries from a Conan ``runtime_deploy`` output folder into each
-    Python package directory that contains native extensions (``.so`` / ``.pyd``).
-
-    Shared libs are placed in the **same directory** as each native extension
-    (``.so`` / ``.pyd``) on every platform .
-
-    RPATH for the **compiled extension** is applied in ``build.py`` via
-    ``patch_rpath`` **before** this step.
+    Move contents of Conan's runtime_deploy to the wheel staging root.
     """
     deploy_folder = Path(deploy_folder)
+    staging_dir = Path(staging_dir)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
         return
-    for pkg_dir in package_dirs_with_extensions(staging_dir):
-        pkg_dir.mkdir(parents=True, exist_ok=True)
-        for f in deploy_folder.iterdir():
-            dest = pkg_dir / f.name
-            if f.is_file():
-                shutil.copy2(f, dest)
-            elif f.is_dir():
-                shutil.copytree(f, dest, dirs_exist_ok=True)
-
-
-def package_dirs_with_extensions(staging_dir: Path) -> set:
-    package_dirs = set()
-    for pattern in ("*.so", "*.pyd"):
-        for path in staging_dir.rglob(pattern):
-            if not path.is_file() or path.is_symlink():
-                continue
-            package_dirs.add(path.parent)
-    return package_dirs
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(deploy_folder, staging_dir, dirs_exist_ok=True)
 
 
 def _is_python_extension_module(path: Path) -> bool:
@@ -47,14 +25,14 @@ def _is_python_extension_module(path: Path) -> bool:
 
 def patch_rpath(staging_dir: Path) -> None:
     """
-    macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` on Python extension modules.
+    macOS/Linux: add ``@loader_path/..`` / ``$ORIGIN/..`` on Python extension modules.
     """
     if sys.platform == "darwin":
-        rpath = "@loader_path"
+        rpath = "@loader_path/.."
         patcher = "install_name_tool"
         arguments = ["-add_rpath", rpath]
     elif sys.platform == "linux":
-        rpath = "$ORIGIN"
+        rpath = "$ORIGIN/.."
         patcher = "patchelf"
         arguments = ["--add-rpath", rpath]
     else:

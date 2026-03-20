@@ -128,7 +128,7 @@ def test_patch_rpath_targets_extension_suffix_on_linux(tmp_path, monkeypatch):
 
     def capture_run(cmd, **kwargs):
         if cmd and cmd[0] == "patchelf":
-            patched.append(cmd[-1])
+            patched.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, b"", b"")
 
     monkeypatch.setattr(subprocess, "run", capture_run)
@@ -139,7 +139,8 @@ def test_patch_rpath_targets_extension_suffix_on_linux(tmp_path, monkeypatch):
     (pkg / "mod.cpython-312-x86_64-linux-gnu.so").write_text("ext")
     patch_rpath(staging)
     assert len(patched) == 1
-    assert patched[0].endswith("mod.cpython-312-x86_64-linux-gnu.so")
+    assert patched[0][-1].endswith("mod.cpython-312-x86_64-linux-gnu.so")
+    assert patched[0][2] == "$ORIGIN/.."
 
 
 def test_move_deploy_to_wheel_copies_shared_libs(tmp_path):
@@ -156,9 +157,9 @@ def test_move_deploy_to_wheel_copies_shared_libs(tmp_path):
         (pkg / "ext.so").write_text("ext", encoding="utf-8")
     move_deploy_to_wheel(deploy, staging)
     if sys.platform == "win32":
-        assert (pkg / "dep.dll").read_text() == "dll"
+        assert (staging / "dep.dll").read_text() == "dll"
     else:
-        assert (pkg / "libdep.so").read_text() == "so"
+        assert (staging / "libdep.so").read_text() == "so"
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):
