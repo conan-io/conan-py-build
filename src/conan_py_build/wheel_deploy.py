@@ -10,7 +10,9 @@ from pathlib import Path
 def _is_python_extension_module(path: Path) -> bool:
     if path.is_symlink():
         return False
-    return any(path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES)
+    return any(
+        path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES
+    )
 
 
 def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
@@ -25,9 +27,7 @@ def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
     return package_dirs
 
 
-def move_deploy_to_wheel(
-    deploy_folder: Path, staging_dir: Path
-) -> None:
+def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
     """
     Copy Conan's ``runtime_deploy`` output into **each directory** under
     *staging_dir* that contains a native extension (``.so`` / ``.pyd``).
@@ -71,8 +71,12 @@ def patch_rpath(staging_dir: Path) -> None:
     for path in staging_dir.rglob("*.so"):
         if _is_python_extension_module(path):
             try:
-                subprocess.run([patcher, *arguments, str(path)],
-                                check=True, capture_output=True, text=True)
+                subprocess.run(
+                    [patcher, *arguments, str(path)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
             except FileNotFoundError:
                 print(
                     f"WARNING: {patcher} not found. Python extension {path.name} may not load "
