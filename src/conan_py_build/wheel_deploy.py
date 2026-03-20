@@ -7,14 +7,21 @@ import sys
 from pathlib import Path
 
 
+def _is_python_extension_module(path: Path) -> bool:
+    if path.is_symlink():
+        return False
+    return any(path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES)
+
+
 def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
-    """Directories under *staging_dir* that contain a ``.so`` / ``.pyd`` (real files)."""
+    """Directories under *staging_dir* that contain a Python extension module file."""
     package_dirs: set[Path] = set()
     for pattern in ("*.so", "*.pyd"):
         for path in staging_dir.rglob(pattern):
-            if not path.is_file() or path.is_symlink():
+            if not path.is_file():
                 continue
-            package_dirs.add(path.parent)
+            if _is_python_extension_module(path):
+                package_dirs.add(path.parent)
     return package_dirs
 
 
@@ -42,12 +49,6 @@ def move_deploy_to_wheel(
                 shutil.copy2(f, dest)
             elif f.is_dir():
                 shutil.copytree(f, dest, dirs_exist_ok=True)
-
-
-def _is_python_extension_module(path: Path) -> bool:
-    if path.is_symlink():
-        return False
-    return any(path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES)
 
 
 def patch_rpath(staging_dir: Path) -> None:

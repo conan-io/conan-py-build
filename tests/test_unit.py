@@ -1,4 +1,5 @@
 """Unit tests for the conan_py_build build backend."""
+import importlib.machinery
 import subprocess
 import sys
 from pathlib import Path
@@ -148,7 +149,8 @@ def test_move_deploy_to_wheel_copies_shared_libs_next_to_extension(tmp_path):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    (pkg / "ext.pyd").write_text("pyd", encoding="utf-8")
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_text("ext", encoding="utf-8")
     move_deploy_to_wheel(deploy, staging)
     assert (pkg / "libdep.so").read_text() == "so"
 
