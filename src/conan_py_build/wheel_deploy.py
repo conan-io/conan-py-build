@@ -43,11 +43,9 @@ def patch_rpath(staging_dir: Path) -> None:
     warned = False
     for path in staging_dir.rglob("*.so"):
         if _is_python_extension_module(path):
-            cmd = (
-                [patcher, *arguments, str(path)]
-            )
             try:
-                subprocess.run(cmd, check=True, capture_output=True)
+                subprocess.run([patcher, *arguments, str(path)],
+                                check=True, capture_output=True, text=True)
             except FileNotFoundError:
                 print(
                     f"WARNING: {patcher} not found. Python extension {path.name} may not load "
