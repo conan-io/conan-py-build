@@ -20,6 +20,8 @@ def move_deploy_to_wheel(
 
 
 def _is_python_extension_module(path: Path) -> bool:
+    if path.is_symlink():
+        return False
     return any(path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES)
 
 
@@ -40,7 +42,7 @@ def patch_rpath(staging_dir: Path) -> None:
 
     warned = False
     for path in staging_dir.rglob("*.so"):
-        if _is_python_extension_module(path) and not path.is_symlink():
+        if _is_python_extension_module(path):
             cmd = (
                 [patcher, *arguments, str(path)]
             )
