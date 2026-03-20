@@ -451,7 +451,7 @@ def _do_build_wheel(
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
-    # Conan built-in deployer: copies host deps' shared libs before build(); see wheel_deploy stage step.
+
     runtime_deploy_dir = (base_dir / "runtime_deploy").resolve()
 
     conan_api = ConanAPI()
@@ -546,9 +546,10 @@ def _do_build_wheel(
         dirs_exist_ok=True,
     )
 
-    # RPATH on extension modules only, before runtime_deploy deps land in staging.
+    # Add rpath to extension modules only, we are not touching shared libs from Conan.
     patch_rpath(staging_dir)
 
+    # Copy shared libs from Conan's runtime_deploy to the wheel layout.
     move_deploy_to_wheel(runtime_deploy_dir, staging_dir)
 
     # Create dist-info
