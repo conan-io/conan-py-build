@@ -43,12 +43,7 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
 
     for pkg_dir in _package_dirs_with_native_extensions(staging_dir):
         pkg_dir.mkdir(parents=True, exist_ok=True)
-        for f in deploy_folder.iterdir():
-            dest = pkg_dir / f.name
-            if f.is_file():
-                shutil.copy2(f, dest)
-            elif f.is_dir():
-                shutil.copytree(f, dest, dirs_exist_ok=True)
+        shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
 
 
 def patch_rpath(staging_dir: Path) -> None:
