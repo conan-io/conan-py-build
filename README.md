@@ -124,17 +124,6 @@ If `wheel.packages` is not set, the backend includes a single package at
 `src/<normalized_project_name>` (e.g. `src/mypackage` for a project named
 `mypackage`).
 
-### Support for shared library builds
-
-If your extension links to shared libs from Conan, the backend runs Conan’s
-built-in **`runtime_deploy`** during `conan build`, then copies those artifacts into
-the wheel layout:
-- **All platforms** — shared libs live in the **same directory** as the
-  extension (`.so` / `.pyd`). **macOS** — `install_name_tool` adds
-  `@loader_path`. **Linux** — `patchelf --add-rpath '$ORIGIN'` (requires
-  patchelf, or auditwheel repair). **Windows** — the DLL loader already looks
-  next to the `.pyd`.
-
 **Conan recipe path.** If your recipe lives outside the project root (e.g.
 `subfolder/conanfile.py`), set `conanfile-path` so the backend runs
 `conan source`, `conan build` and `conan export-pkg` on that path:
@@ -209,6 +198,12 @@ The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the on
 By default the backend uses Conan's **default** profile. To use an autodetected
 profile, set
 **`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`** (or `true` / `yes`).
+
+### Support for shared library builds
+
+If your extension links to shared libs from Conan, the backend runs Conan’s
+built-in **`runtime_deploy`** during `conan build`, then copies those artifacts into
+the wheel layout.
 
 ## Examples
 

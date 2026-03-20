@@ -1,3 +1,4 @@
+import importlib.machinery
 import shutil
 import subprocess
 import sys
@@ -12,10 +13,10 @@ def move_deploy_to_wheel(
     Python package directory that contains native extensions (``.so`` / ``.pyd``).
 
     Shared libs are placed in the **same directory** as each native extension
-    (``.so`` / ``.pyd``) on every platform — same idea as Windows DLL search.
-    On macOS/Linux, RPATH is set to ``@loader_path`` / ``$ORIGIN`` so the dynamic
-    loader can resolve ``.so`` / ``.dylib`` in the **same directory** as each
-    binary under staging.
+    (``.so`` / ``.pyd``) on every platform .
+
+    RPATH for the **compiled extension** is applied in ``build.py`` via
+    ``patch_rpath`` **before** this step.
     """
     deploy_folder = Path(deploy_folder)
     if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
@@ -28,7 +29,6 @@ def move_deploy_to_wheel(
                 shutil.copy2(f, dest)
             elif f.is_dir():
                 shutil.copytree(f, dest, dirs_exist_ok=True)
-    _patch_staging_rpath_for_wheel_libs(staging_dir)
 
 
 def package_dirs_with_extensions(staging_dir: Path) -> set:
@@ -41,46 +41,39 @@ def package_dirs_with_extensions(staging_dir: Path) -> set:
     return package_dirs
 
 
-def _patch_staging_rpath_for_wheel_libs(staging_dir: Path) -> None:
-    """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` for libs in the wheel staging tree."""
+def _is_python_extension_module(path: Path) -> bool:
+    return any(path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES)
+
+
+def patch_rpath(staging_dir: Path) -> None:
+    """
+    macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` on Python extension modules.
+    """
     if sys.platform == "darwin":
         rpath = "@loader_path"
-        globs = [staging_dir.rglob(p) for p in ("*.so", "*.dylib")]
-        paths = (p for gen in globs for p in gen)
-        for path in paths:
-            if path.is_symlink():
-                continue
-            try:
-                subprocess.run(
-                    ["install_name_tool", "-add_rpath", rpath, str(path)],
-                    check=True,
-                    capture_output=True,
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                pass
+        patcher = "install_name_tool"
+        arguments = ["-add_rpath", rpath]
+    elif sys.platform == "linux":
+        rpath = "$ORIGIN"
+        patcher = "patchelf"
+        arguments = ["--add-rpath", rpath]
+    else:
         return
 
-    if sys.platform != "linux":
-        return
-
-    rpath = "$ORIGIN"
     warned = False
     for path in staging_dir.rglob("*.so"):
-        if path.is_symlink():
-            continue
-        try:
-            subprocess.run(
-                ["patchelf", "--add-rpath", rpath, str(path)],
-                check=True,
-                capture_output=True,
+        if _is_python_extension_module(path) and not path.is_symlink():
+            cmd = (
+                [patcher, *arguments, str(path)]
             )
-        except FileNotFoundError:
-            if not warned:
+            try:
+                subprocess.run(cmd, check=True, capture_output=True)
+            except FileNotFoundError:
                 print(
-                    "  WARNING: patchelf not found. Linux extension may not load "
-                    "shared libs. Install patchelf or run auditwheel repair on the wheel.",
+                    f"WARNING: {patcher} not found. Python extension {path.name} may not load "
+                    f"shared libs. Install {patcher} or run auditwheel repair on the wheel {path.name}.",
                     flush=True,
                 )
                 warned = True
-        except subprocess.CalledProcessError:
-            pass
+            except subprocess.CalledProcessError:
+                pass

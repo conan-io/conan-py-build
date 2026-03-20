@@ -1,4 +1,5 @@
 """Unit tests for the conan_py_build build backend."""
+import subprocess
 import sys
 from pathlib import Path
 
@@ -6,7 +7,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import move_deploy_to_wheel
+from conan_py_build.wheel_deploy import move_deploy_to_wheel, patch_rpath
 
 from conan_py_build.build import (
     _parse_config,
@@ -120,6 +121,25 @@ build-backend = "conan_py_build.build"
     meta = {"name": "pkg", "dynamic": ["version"]}
     with pytest.raises(RuntimeError, match="must define 'file' or 'provider'"):
         _resolve_version(meta, tmp_path)
+
+
+def test_patch_rpath_targets_extension_suffix_on_linux(tmp_path, monkeypatch):
+    patched = []
+
+    def capture_run(cmd, **kwargs):
+        if cmd and cmd[0] == "patchelf":
+            patched.append(cmd[-1])
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    monkeypatch.setattr(subprocess, "run", capture_run)
+    monkeypatch.setattr(sys, "platform", "linux")
+    staging = tmp_path / "staging"
+    pkg = staging / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "mod.cpython-312-x86_64-linux-gnu.so").write_text("ext")
+    patch_rpath(staging)
+    assert len(patched) == 1
+    assert patched[0].endswith("mod.cpython-312-x86_64-linux-gnu.so")
 
 
 def test_move_deploy_to_wheel_copies_shared_libs(tmp_path):
