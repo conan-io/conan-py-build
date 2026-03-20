@@ -88,7 +88,7 @@ Configure options in `pyproject.toml` (nested under `[tool.conan-py-build]`):
 | `extra-profile`, `extra-profile-host`, … | `[tool.conan-py-build]` | Extra Conan profile file(s) — see [Profiles](#profiles) | (none) |
 | `version.file` | `[tool.conan-py-build.version]` | Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | Set to `"setuptools_scm"` for version from git tags. Mutually exclusive with `version.file`. | (none) |
-| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_name>"]` |
+| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel. Each path must be a directory with `__init__.py` | `["src/<normalized_name>"]` |
 | `include` / `exclude` | `[tool.conan-py-build.sdist]` | Paths or glob patterns to add to or remove from the sdist | `[]` / `[]` |
 
 ### Dynamic version
@@ -219,10 +219,10 @@ those libs resolve).
 
 See the [examples/](examples/) directory for complete working examples:
 
-- **[basic](examples/basic/)**: Extension with `fmt`; recipe in `conan/` via `conanfile-path`
+- **[basic](examples/basic/)**: Extension with `fmt`, recipe in `conan/` via `conanfile-path`
 - **[basic-pybind11](examples/basic-pybind11/)**: pybind11 + `fmt` (dynamic version from `__init__.py`, custom `wheel.packages`, PEP 639 license files)
 - **[basic-nanobind](examples/basic-nanobind/)**: nanobind + `fmt`, with `extra-profile` for C++17
-- **[external-sources](examples/external-sources/)**: pybind11; C++ dependency fetched in `source()`
+- **[external-sources](examples/external-sources/)**: pybind11. C++ dependency fetched in `source()`
 - **[cibw-example](examples/cibw-example/)**: pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/) (profiles under `examples/cibw-example/profiles/`, see CI workflow)
 
 ## Development
