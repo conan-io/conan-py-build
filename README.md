@@ -8,6 +8,14 @@ build Python C/C++ extensions.
 
 ## Installation
 
+From [PyPI](https://pypi.org/project/conan-py-build/) (typical use):
+
+```bash
+pip install conan-py-build
+```
+
+To work on this repository or try the current `main`:
+
 ```bash
 git clone https://github.com/conan-io/conan-py-build.git
 cd conan-py-build
@@ -72,17 +80,16 @@ Pass configuration options via `--config-settings`:
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
-Configure in `pyproject.toml` under `[tool.conan-py-build]`:
+Configure options in `pyproject.toml` (nested under `[tool.conan-py-build]`):
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `version.file` | Path to a Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
-| `version.provider` | Set to `"setuptools_scm"` to resolve version from git tags (see [Dynamic version](#dynamic-version)). Mutually exclusive with `version.file`. | (none) |
-| `conanfile-path` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
-| `wheel.packages` | List of paths (relative to project root) of Python packages to include in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_project_name>"]` |
-| `sdist.include` | List of paths or patterns to add to the sdist | `[]` |
-| `sdist.exclude` | List of paths or patterns to exclude from the sdist | `[]` |
-| `extra-profile` | Path (relative to project root) to a Conan profile file | (none) |
+| Option | TOML section | Description | Default |
+|--------|--------------|-------------|---------|
+| `conanfile-path` | `[tool.conan-py-build]` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
+| `extra-profile`, `extra-profile-host`, … | `[tool.conan-py-build]` | Extra Conan profile file(s) — see [Profiles](#profiles) | (none) |
+| `version.file` | `[tool.conan-py-build.version]` | Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
+| `version.provider` | `[tool.conan-py-build.version]` | Set to `"setuptools_scm"` for version from git tags. Mutually exclusive with `version.file`. | (none) |
+| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel; each must be a directory with `__init__.py` | `["src/<normalized_name>"]` (project name with `-` → `_`) |
+| `include` / `exclude` | `[tool.conan-py-build.sdist]` | Paths or glob patterns to add to or remove from the sdist | `[]` / `[]` |
 
 ### Dynamic version
 
@@ -114,15 +121,15 @@ The backend supports [PEP 639](https://peps.python.org/pep-0639/) license metada
 ### Wheel packages
 
 You can control which Python packages are included in the wheel via
-`[tool.conan-py-build].wheel` in `pyproject.toml`:
+`[tool.conan-py-build.wheel]` in `pyproject.toml`:
 
-- **`wheel.packages`**: list of paths (relative to the project root) that are
-  Python packages to include in the wheel. Each path must be a directory inside
-  the project.
+- **`packages`**: list of paths (relative to the project root) that are Python
+  packages to include in the wheel. Each path must be a directory inside the
+  project.
 
-If `wheel.packages` is not set, the backend includes a single package at
-`src/<normalized_project_name>` (e.g. `src/mypackage` for a project named
-`mypackage`).
+If `packages` is not set, the backend includes a single package at
+`src/<normalized_project_name>` (hyphens in the project name become underscores,
+e.g. `my-package` → `src/my_package`).
 
 **Conan recipe path.** If your recipe lives outside the project root (e.g.
 `subfolder/conanfile.py`), set `conanfile-path` so the backend runs
@@ -138,10 +145,12 @@ conanfile-path = "subfolder"
 packages = ["src/mypackage", "src/other_package"]
 ```
 
+See [basic-pybind11](examples/basic-pybind11/) for multiple packages (`python/...` + `src/...`).
+
 ### Sdist include / exclude
 
 You can control what goes into the source distribution (sdist) via
-`[tool.conan-py-build].sdist` in `pyproject.toml`:
+`[tool.conan-py-build.sdist]` in `pyproject.toml`:
 
 - **`sdist.include`**: paths to add to the sdist (e.g. files in default exclude
   like `build/`, or extra dirs like `["docs/"]`).
@@ -162,9 +171,9 @@ exclude = [".github", "scripts", "README.md"]
 
 Host and build profiles are set via `--config-settings` (see table above):
 `host-profile` and `build-profile`, defaulting to Conan’s `default` profile.
-Example with Jinja profiles from `examples/profiles/` (`include(default)` +
-wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full version, e.g.
-`3.12.12`):
+Example with Jinja profiles under `examples/profiles/` that use `include(default)`
+and set `WHEEL_*` for wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full
+interpreter version, e.g. `3.12.12`:
 
 ```bash
 export CONAN_CPYTHON_VERSION=3.12.12
@@ -210,9 +219,11 @@ those libs resolve).
 
 See the [examples/](examples/) directory for complete working examples:
 
-- **[basic](examples/basic/)**: Simple Python extension using the `fmt` library
-- **[basic-pybind11](examples/basic-pybind11/)**: Python extension using pybind11 (with dynamic version from `__init__.py`)
-- **[external-sources](examples/external-sources/)**: C++ code fetched in `source()`
+- **[basic](examples/basic/)**: Extension with `fmt`; recipe in `conan/` via `conanfile-path`
+- **[basic-pybind11](examples/basic-pybind11/)**: pybind11 + `fmt` (dynamic version from `__init__.py`, custom `wheel.packages`, PEP 639 license files)
+- **[basic-nanobind](examples/basic-nanobind/)**: nanobind + `fmt`, with `extra-profile` for C++17
+- **[external-sources](examples/external-sources/)**: pybind11; C++ dependency fetched in `source()`
+- **[cibw-example](examples/cibw-example/)**: pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/) (profiles under `examples/cibw-example/profiles/`, see CI workflow)
 
 ## Development
 
