@@ -42,7 +42,6 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
     staging_dir.mkdir(parents=True, exist_ok=True)
 
     for pkg_dir in _package_dirs_with_native_extensions(staging_dir):
-        pkg_dir.mkdir(parents=True, exist_ok=True)
         shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
 
 
