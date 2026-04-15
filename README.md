@@ -183,6 +183,9 @@ pip wheel . --no-build-isolation \
     -w dist/
 ```
 
+> **Wheel tags.** Override `{pyver}-{abi}-{platform}` wheel tags via
+> `WHEEL_PYVER`, `WHEEL_ABI` and/or `WHEEL_ARCH` in a profile's `[buildenv]`.
+
 **Extra profile in `pyproject.toml`.** You can add one extra Conan profile file
 via `[tool.conan-py-build].extra-profile`. It is **composed on top of** the
 profiles applied first (default or those passed via `-C`). The extra profile is
