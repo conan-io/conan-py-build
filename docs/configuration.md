@@ -74,6 +74,44 @@ e.g. `compiler.cppstd=17`:
 extra-profile = "cpp17.profile"
 ```
 
+### Wheel tags (`WHEEL_PYVER`, `WHEEL_ABI`, `WHEEL_ARCH`)
+
+By default the backend reads the wheel filename tags
+(interpreter, ABI, platform) from the running Python
+interpreter. When you build against a **portable
+CPython** (via the `cpython-portable` Conan recipe) or
+cross-compile, set these three variables in the profile's
+`[buildenv]` to override them:
+
+| Variable | Wheel tag | Example |
+|----------|-----------|---------|
+| `WHEEL_PYVER` | Interpreter | `cp312`, `py3` |
+| `WHEEL_ABI` | ABI | `cp312`, `abi3`, `none` |
+| `WHEEL_ARCH` | Platform | `manylinux_2_28_x86_64`, `macosx_11_0_arm64`, `win_amd64` |
+
+Each variable independently overrides its auto-detected
+value. Auto-detection always runs from the current
+interpreter. Any variable that is set replaces only its
+corresponding tag.
+
+A typical Jinja profile sets all three from
+`CONAN_CPYTHON_VERSION`:
+
+```jinja
+{% set py_ver = os.environ["CONAN_CPYTHON_VERSION"] %}
+{% set py_tag = "cp" + "".join(py_ver.split(".")[:2]) %}
+
+[buildenv]
+WHEEL_PYVER={{ py_tag }}
+WHEEL_ABI={{ py_tag }}
+WHEEL_ARCH=manylinux_2_28_x86_64
+```
+
+The resulting wheel filename will be, for example,
+`mypackage-0.1.0-cp312-cp312-manylinux_2_28_x86_64.whl`.
+Working examples for Linux, macOS and Windows live under
+[`examples/profiles/`](https://github.com/conan-io/conan-py-build/tree/main/examples/profiles).
+
 ## Conan home
 
 The backend uses Conan's default home (`~/.conan2`,
