@@ -29,32 +29,19 @@ def _get_wheel_tags() -> dict:
     """
     Get wheel tags for the target platform.
 
-    If WHEEL_ARCH environment variable is set (e.g., from a Conan profile's [buildenv]),
-    uses the environment variables:
+    Auto-detects tags from the current platform. Each WHEEL_* environment variable,
+    if set, takes precedence over the auto-detected value:
         - WHEEL_PYVER: Python version tag (e.g., "cp312", "py3")
         - WHEEL_ABI: ABI tag (e.g., "cp312", "abi3", "none")
         - WHEEL_ARCH: Platform tag (e.g., "manylinux_2_28_x86_64", "win_amd64")
-
-    Otherwise, auto-detects tags from the current platform using packaging library.
     """
-    # Check for cross-compile env vars (typically set by Conan profile [buildenv])
-    wheel_arch = os.environ.get("WHEEL_ARCH")
-    if wheel_arch:
-        tags = {
-            "pyver": [os.environ.get("WHEEL_PYVER", "py3")],
-            "abi": [os.environ.get("WHEEL_ABI", "none")],
-            "arch": [wheel_arch],
-        }
-        print(f"  Using wheel tags from environment: {tags}")
-        return tags
-
-    # Default: auto-detect from current platform
     tag = next(sys_tags())
-    return {
-        "pyver": [tag.interpreter],
-        "abi": [tag.abi],
-        "arch": [tag.platform],
+    tags = {
+        "pyver": [os.environ.get("WHEEL_PYVER", tag.interpreter)],
+        "abi": [os.environ.get("WHEEL_ABI", tag.abi)],
+        "arch": [os.environ.get("WHEEL_ARCH", tag.platform)],
     }
+    return tags
 
 
 def _read_pyproject(project_dir: Path) -> dict:

@@ -193,6 +193,20 @@ def test_get_wheel_tags_from_env(monkeypatch):
     }
 
 
+def test_get_wheel_tags_individual_override(monkeypatch):
+    """Each WHEEL_* env var overrides its tag independently (#35)."""
+    from packaging.tags import Tag
+    monkeypatch.setattr("conan_py_build.build.sys_tags", lambda: iter([Tag("cp312", "cp312", "macosx_15_0_arm64")]))
+    monkeypatch.delenv("WHEEL_PYVER", raising=False)
+    monkeypatch.delenv("WHEEL_ARCH", raising=False)
+    monkeypatch.setenv("WHEEL_ABI", "abi3")
+    assert _get_wheel_tags() == {
+        "pyver": ["cp312"],
+        "abi": ["abi3"],
+        "arch": ["macosx_15_0_arm64"],
+    }
+
+
 def test_check_wheel_package_path_ok(tmp_path):
     pkg = tmp_path / "src" / "mypkg"
     pkg.mkdir(parents=True)
