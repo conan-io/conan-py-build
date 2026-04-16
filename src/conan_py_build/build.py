@@ -317,14 +317,6 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     return dist_info_dir
 
 
-def _copy_dist_info_from_metadata_directory(metadata_directory: str, staging_dir: Path) -> None:
-    """Copy the pre-built .dist-info from metadata_directory into staging_dir.
-
-    Per PEP 517, metadata_directory is the path to the .dist-info directory itself.
-    """
-    src = Path(metadata_directory)
-    shutil.copytree(src, staging_dir / src.name, dirs_exist_ok=True)
-
 
 # PEP 517 Hooks
 
@@ -578,7 +570,8 @@ def _do_build_wheel(
 
     # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)
     if metadata_directory is not None:
-        _copy_dist_info_from_metadata_directory(metadata_directory, staging_dir)
+        src = Path(metadata_directory)  # PEP 517: metadata_directory is the .dist-info path itself
+        shutil.copytree(src, staging_dir / src.name, dirs_exist_ok=True)
     else:
         _create_dist_info(staging_dir, project_metadata, source_dir)
 
