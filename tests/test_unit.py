@@ -24,6 +24,7 @@ from conan_py_build.build import (
     _copy_license_files_from_paths,
     _validate_version_config,
     _get_version_from_scm,
+    prepare_metadata_for_build_wheel,
 )
 
 
@@ -280,6 +281,7 @@ def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
     assert "License-File: LICENSE" in meta_content
 
 
+
 def test_build_wheel_with_tags_produces_whl(tmp_path):
     wheel_dir = tmp_path / "dist"
     wheel_dir.mkdir(parents=True)
@@ -317,3 +319,60 @@ provider = "invalid"
 """, encoding="utf-8")
     with pytest.raises(RuntimeError, match="must be 'setuptools_scm'"):
         _validate_version_config(tmp_path)
+
+
+@pytest.fixture
+def prepared_dist_info(tmp_path, monkeypatch):
+    """Run prepare_metadata_for_build_wheel on a minimal project; return the dist-info Path."""
+    make_pyproject_minimal(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    name = prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
+    return tmp_path / "meta" / name
+
+
+def test_prepare_metadata_returns_dist_info_name(tmp_path, monkeypatch):
+    """Returns the .dist-info directory name with normalised package name and version."""
+    make_pyproject_minimal(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert prepare_metadata_for_build_wheel(str(tmp_path / "meta")) == "test_pkg-1.2.3.dist-info"
+
+
+def test_prepare_metadata_metadata_content(prepared_dist_info):
+    """METADATA contains the Name and Version headers from pyproject.toml."""
+    content = (prepared_dist_info / "METADATA").read_text(encoding="utf-8")
+    assert "Name: test-pkg" in content
+    assert "Version: 1.2.3" in content
+
+
+def test_prepare_metadata_no_wheel_file(prepared_dist_info):
+    """WHEEL file is not written: tags depend on VirtualBuildEnv and cannot be computed here."""
+    assert not (prepared_dist_info / "WHEEL").exists()
+
+
+def test_prepare_metadata_dynamic_version_from_file(tmp_path, monkeypatch):
+    """Dynamic version resolved from [tool.conan-py-build.version].file is used in the directory name."""
+    make_pyproject_with_tool_config(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    name = prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
+    assert name == "myadder_pybind11-0.5.0.dist-info"
+    assert "Version: 0.5.0" in (tmp_path / "meta" / name / "METADATA").read_text(encoding="utf-8")
+
+
+def test_prepare_metadata_with_license_file(tmp_path, monkeypatch):
+    """License file declared in pyproject.toml is copied into .dist-info/licenses/."""
+    (tmp_path / "pyproject.toml").write_text("""\
+[project]
+name = "licensed-pkg"
+version = "0.9.0"
+description = "Test"
+license-files = ["LICENSE"]
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+""", encoding="utf-8")
+    (tmp_path / "LICENSE").write_text("MIT", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    dist_info = tmp_path / "meta" / prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
+    assert (dist_info / "licenses" / "LICENSE").read_text() == "MIT"
+    assert "License-File: LICENSE" in (dist_info / "METADATA").read_text(encoding="utf-8")

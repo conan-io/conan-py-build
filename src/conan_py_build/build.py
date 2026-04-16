@@ -317,6 +317,7 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     return dist_info_dir
 
 
+
 # PEP 517 Hooks
 
 def get_requires_for_build_wheel(config_settings: Optional[dict] = None) -> list:
@@ -333,6 +334,34 @@ def get_requires_for_build_sdist(config_settings: Optional[dict] = None) -> list
     return []
 
 
+def prepare_metadata_for_build_wheel(
+    metadata_directory: str,
+    config_settings: Optional[dict] = None,
+) -> str:
+    """
+    PEP 517 hook: Prepare wheel metadata without building the full wheel.
+
+    Creates a .dist-info directory inside metadata_directory containing only
+    METADATA. The WHEEL file is intentionally omitted: wheel tags depend on
+    Conan's VirtualBuildEnv and cannot be computed reliably at this stage.
+
+    Returns the name of the created directory.
+    """
+    metadata_dir = Path(metadata_directory)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    source_dir = Path.cwd()
+    project_metadata = _get_project_metadata(source_dir)
+    _resolve_version(project_metadata, source_dir)
+
+    name = _normalize_name(project_metadata.get("name", "unknown"))
+    version = project_metadata.get("version", "0.0.0")
+    print(f"Preparing metadata for {name} {version}...", flush=True)
+
+    dist_info_dir = _create_dist_info(metadata_dir, project_metadata, source_dir)
+    return dist_info_dir.name
+
+
 def build_wheel(
     wheel_directory: str,
     config_settings: Optional[dict] = None,
@@ -341,13 +370,11 @@ def build_wheel(
     """
     PEP 517 hook: Build a wheel from the source tree.
 
-    Note: prepare_metadata_for_build_wheel is not implemented, so
-    metadata_directory is ignored if provided.
+    When metadata_directory is provided its contents (METADATA, license files,
+    and any extra entries) are copied into the wheel unchanged. The WHEEL file
+    and RECORD are still written by distlib during wheel packaging. Wheel tags
+    are always recomputed inside VirtualBuildEnv.
     """
-
-    if metadata_directory is not None:
-        print(f"WARNING: metadata_directory provided: '{metadata_directory}' - " \
-               "backend will ignore/recreate dist-info.")
 
     wheel_dir = Path(wheel_directory)
     wheel_dir.mkdir(parents=True, exist_ok=True)
@@ -370,6 +397,7 @@ def build_wheel(
             version,
             project_metadata,
             config,
+            metadata_directory,
         )
 
 
@@ -426,6 +454,7 @@ def _do_build_wheel(
     version: str,
     project_metadata: dict,
     config: dict,
+    metadata_directory: Optional[str] = None,
 ) -> str:
     """Internal function that performs the actual wheel build."""
     
@@ -539,8 +568,12 @@ def _do_build_wheel(
     # Copy shared libs from Conan's runtime_deploy to the wheel layout.
     move_deploy_to_wheel(runtime_deploy_dir, staging_dir)
 
-    # Create dist-info
-    _create_dist_info(staging_dir, project_metadata, source_dir)
+    # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)
+    if metadata_directory is not None:
+        src = Path(metadata_directory)  # PEP 517: metadata_directory is the .dist-info path itself
+        shutil.copytree(src, staging_dir / src.name, dirs_exist_ok=True)
+    else:
+        _create_dist_info(staging_dir, project_metadata, source_dir)
 
     # Build wheel using distlib. Apply Conan's buildenv to get cross-compile
     # wheel tags from [buildenv]
