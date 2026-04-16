@@ -207,6 +207,7 @@ file = "src/file_pkg/__init__.py"
     assert build_sdist(str(sdist_dir)) == "file-pkg-2.3.4.tar.gz"
 
 
+
 def test_build_sdist_version_scm(tmp_path, monkeypatch):
     """Integration: build_sdist resolves dynamic version from setuptools_scm (git tag)."""
     proj = tmp_path / "proj"
