@@ -3,7 +3,7 @@
 A [PEP 517](https://peps.python.org/pep-0517/) build backend that uses
 [Conan](https://conan.io) to build Python C/C++ extensions.
 
-**[Documentation](https://conan-io.github.io/conan-py-build/)** ·
+**[Documentation](https://blog.conan.io/conan-py-build/)** ·
 [PyPI](https://pypi.org/project/conan-py-build/) ·
 [Examples](examples/)
 
@@ -66,7 +66,7 @@ install(TARGETS _core DESTINATION mypackage)
 pip wheel . -w dist/ -vvv
 ```
 
-See the [documentation](https://conan-io.github.io/conan-py-build/)
+See the [documentation](https://blog.conan.io/conan-py-build/)
 for the full getting started guide, configuration, profiles,
 dynamic versioning, and more.
 

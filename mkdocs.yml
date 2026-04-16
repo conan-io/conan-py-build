@@ -1,6 +1,6 @@
 site_name: conan-py-build
 site_description: PEP 517 build backend using Conan for Python C/C++ extensions
-site_url: https://conan-io.github.io/conan-py-build/
+site_url: https://blog.conan.io/conan-py-build/
 repo_url: https://github.com/conan-io/conan-py-build
 repo_name: conan-io/conan-py-build
 edit_uri: edit/main/docs/
@@ -32,8 +32,13 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-hooks:
-  - docs/hooks.py
+# TODO 0.4.1: uncomment when custom domain is configured
+# hooks:
+#   - docs/hooks.py
+
+# TODO 0.4.1: remove when custom domain is configured
+exclude_docs: |
+  llms.txt
 
 nav:
   - Home: index.md
