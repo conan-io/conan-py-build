@@ -1,0 +1,18 @@
+# conan-py-build
+
+> PEP 517 build backend that uses Conan to build Python C/C++ extensions
+> (pybind11, nanobind, CMake). Declare `build-backend = "conan_py_build.build"`
+> in `pyproject.toml` and drive builds with `pip wheel`.
+
+## Docs
+
+- [Home](https://conan-io.github.io/conan-py-build/): getting started with a minimal project (pyproject.toml, conanfile.py, CMakeLists.txt)
+- [Configuration](https://conan-io.github.io/conan-py-build/configuration/): --config-settings, pyproject.toml options, profiles, wheel tags (WHEEL_PYVER/ABI/ARCH), shared libraries, dynamic version, PEP 639 license files
+- [Examples](https://conan-io.github.io/conan-py-build/examples/): pybind11, nanobind, cibuildwheel
+- [Development](https://conan-io.github.io/conan-py-build/development/): editable install, tests, docs
+
+## Source
+
+- [GitHub](https://github.com/conan-io/conan-py-build)
+- [PyPI](https://pypi.org/project/conan-py-build/)
+- [Full docs as plain text](https://conan-io.github.io/conan-py-build/llms-full.txt)

@@ -32,6 +32,9 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+hooks:
+  - docs/hooks.py
+
 nav:
   - Home: index.md
   - Configuration: configuration.md
