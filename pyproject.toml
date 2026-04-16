@@ -48,7 +48,7 @@ docs = [
 
 [project.urls]
 Homepage = "https://github.com/conan-io/conan-py-build"
-Documentation = "https://conan-io.github.io/conan-py-build/"
+Documentation = "https://blog.conan.io/conan-py-build/"
 Issues = "https://github.com/conan-io/conan-py-build/issues"
 
 [tool.setuptools.packages.find]
