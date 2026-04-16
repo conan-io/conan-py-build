@@ -10,13 +10,15 @@ pip install -e ".[dev]"
 
 ## Running tests
 
-Unit tests (no Conan install required):
+Unit tests cover individual functions in isolation. They shouldn't invoke Conan:
 
 ```bash
 pytest tests/test_unit.py -v
 ```
 
-Integration tests (run real PEP 517 hooks, Conan must be installed):
+Integration tests exercise the full PEP 517 hook flow (`build_wheel`,
+`build_sdist`) against a real project layout, so they invoke Conan in the
+process:
 
 ```bash
 pytest tests/test_integration.py -v
