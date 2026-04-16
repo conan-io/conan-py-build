@@ -343,25 +343,9 @@ def test_prepare_metadata_metadata_content(prepared_dist_info):
     assert "Version: 1.2.3" in content
 
 
-def test_prepare_metadata_wheel_file_content(prepared_dist_info):
-    """WHEEL file has correct version, generator, purelib flag, and a Tag line."""
-    content = (prepared_dist_info / "WHEEL").read_text(encoding="utf-8")
-    assert "Wheel-Version: 1.0" in content
-    assert "Generator: conan-py-build" in content
-    assert "Root-Is-Purelib: false" in content
-    assert "Tag:" in content
-
-
-def test_prepare_metadata_wheel_tag_uses_env_overrides(tmp_path, monkeypatch):
-    """WHEEL_* environment variables are reflected in the Tag line."""
-    make_pyproject_minimal(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("WHEEL_PYVER", "cp312")
-    monkeypatch.setenv("WHEEL_ABI", "abi3")
-    monkeypatch.setenv("WHEEL_ARCH", "manylinux_2_28_x86_64")
-    name = prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
-    content = (tmp_path / "meta" / name / "WHEEL").read_text(encoding="utf-8")
-    assert "Tag: cp312-abi3-manylinux_2_28_x86_64" in content
+def test_prepare_metadata_no_wheel_file(prepared_dist_info):
+    """WHEEL file is not written: tags depend on VirtualBuildEnv and cannot be computed here."""
+    assert not (prepared_dist_info / "WHEEL").exists()
 
 
 def test_prepare_metadata_dynamic_version_from_file(tmp_path, monkeypatch):

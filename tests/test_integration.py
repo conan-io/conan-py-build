@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from conan_py_build.build import build_sdist, build_wheel
+from conan_py_build.build import build_sdist, build_wheel, prepare_metadata_for_build_wheel
 
 
 _DEFAULT_PYPROJECT = """\
@@ -135,6 +135,24 @@ def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
         wheel_metadata = zf.read(metadata_name).decode("utf-8")
 
     assert pkg_info.strip() == wheel_metadata.strip(), "PKG-INFO and METADATA must be the same core metadata"
+
+
+def test_prepare_metadata_matches_wheel_metadata(integration_project):
+    """Integration: METADATA from prepare_metadata_for_build_wheel matches the METADATA in the final wheel."""
+    meta_dir = integration_project.work_dir / "meta"
+    meta_dir.mkdir()
+    dist_info_name = prepare_metadata_for_build_wheel(str(meta_dir))
+    prepared = (meta_dir / dist_info_name / "METADATA").read_text(encoding="utf-8")
+
+    wheel_dir = integration_project.work_dir / "dist"
+    wheel_dir.mkdir()
+    wheel_name = build_wheel(str(wheel_dir))
+
+    with zipfile.ZipFile(wheel_dir / wheel_name) as zf:
+        (entry,) = [n for n in zf.namelist() if n.endswith(".dist-info/METADATA")]
+        built = zf.read(entry).decode("utf-8")
+
+    assert prepared.strip() == built.strip()
 
 
 def test_build_wheel_integration(integration_project, capfd):

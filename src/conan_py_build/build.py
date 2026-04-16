@@ -340,8 +340,11 @@ def prepare_metadata_for_build_wheel(
     """
     PEP 517 hook: Prepare wheel metadata without building the full wheel.
 
-    Creates a .dist-info directory inside metadata_directory containing METADATA
-    and WHEEL files. Returns the name of the created directory.
+    Creates a .dist-info directory inside metadata_directory containing only
+    METADATA. The WHEEL file is intentionally omitted: wheel tags depend on
+    Conan's VirtualBuildEnv and cannot be computed reliably at this stage.
+
+    Returns the name of the created directory.
     """
     metadata_dir = Path(metadata_directory)
     metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -355,17 +358,6 @@ def prepare_metadata_for_build_wheel(
     print(f"Preparing metadata for {name} {version}...", flush=True)
 
     dist_info_dir = _create_dist_info(metadata_dir, project_metadata, source_dir)
-
-    tags = _get_wheel_tags()
-    tag_str = f"{tags['pyver'][0]}-{tags['abi'][0]}-{tags['arch'][0]}"
-    wheel_file_content = (
-        "Wheel-Version: 1.0\n"
-        "Generator: conan-py-build\n"
-        "Root-Is-Purelib: false\n"
-        f"Tag: {tag_str}\n"
-    )
-    (dist_info_dir / "WHEEL").write_text(wheel_file_content, encoding="utf-8")
-
     return dist_info_dir.name
 
 
@@ -376,6 +368,9 @@ def build_wheel(
 ) -> str:
     """
     PEP 517 hook: Build a wheel from the source tree.
+
+    metadata_directory is ignored: wheel tags depend on Conan's VirtualBuildEnv
+    and must be computed during the actual build.
     """
 
     wheel_dir = Path(wheel_directory)
