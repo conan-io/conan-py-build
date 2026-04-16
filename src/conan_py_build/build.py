@@ -317,6 +317,15 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     return dist_info_dir
 
 
+def _copy_dist_info_from_metadata_directory(metadata_directory: str, staging_dir: Path) -> None:
+    """Copy the pre-built .dist-info from metadata_directory into staging_dir.
+
+    Per PEP 517, metadata_directory is the path to the .dist-info directory itself.
+    """
+    src = Path(metadata_directory)
+    shutil.copytree(src, staging_dir / src.name, dirs_exist_ok=True)
+
+
 # PEP 517 Hooks
 
 def get_requires_for_build_wheel(config_settings: Optional[dict] = None) -> list:
@@ -369,8 +378,10 @@ def build_wheel(
     """
     PEP 517 hook: Build a wheel from the source tree.
 
-    metadata_directory is ignored: wheel tags depend on Conan's VirtualBuildEnv
-    and must be computed during the actual build.
+    When metadata_directory is provided its contents (METADATA, license files,
+    and any extra entries) are copied into the wheel unchanged. The WHEEL file
+    and RECORD are still written by distlib during wheel packaging. Wheel tags
+    are always recomputed inside VirtualBuildEnv.
     """
 
     wheel_dir = Path(wheel_directory)
@@ -394,6 +405,7 @@ def build_wheel(
             version,
             project_metadata,
             config,
+            metadata_directory,
         )
 
 
@@ -450,6 +462,7 @@ def _do_build_wheel(
     version: str,
     project_metadata: dict,
     config: dict,
+    metadata_directory: Optional[str] = None,
 ) -> str:
     """Internal function that performs the actual wheel build."""
     
@@ -563,8 +576,11 @@ def _do_build_wheel(
     # Copy shared libs from Conan's runtime_deploy to the wheel layout.
     move_deploy_to_wheel(runtime_deploy_dir, staging_dir)
 
-    # Create dist-info
-    _create_dist_info(staging_dir, project_metadata, source_dir)
+    # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)
+    if metadata_directory is not None:
+        _copy_dist_info_from_metadata_directory(metadata_directory, staging_dir)
+    else:
+        _create_dist_info(staging_dir, project_metadata, source_dir)
 
     # Build wheel using distlib. Apply Conan's buildenv to get cross-compile
     # wheel tags from [buildenv]

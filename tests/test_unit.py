@@ -20,6 +20,7 @@ from conan_py_build.build import (
     _check_wheel_package_path,
     _get_wheel_packages,
     _create_dist_info,
+    _copy_dist_info_from_metadata_directory,
     _build_wheel_with_tags,
     _copy_license_files_from_paths,
     _validate_version_config,
@@ -279,6 +280,18 @@ def test_create_dist_info_includes_license_file_and_metadata(tmp_path):
     assert (dist_info / "licenses" / "LICENSE").is_file()
     meta_content = (dist_info / "METADATA").read_text(encoding="utf-8")
     assert "License-File: LICENSE" in meta_content
+
+
+def test_copy_dist_info_preserves_extra_files(tmp_path):
+    """Extra files in the pre-built dist-info are copied into staging (PEP 517: path is the .dist-info itself)."""
+    dist_info = tmp_path / "mypkg-1.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text("Name: mypkg\nVersion: 1.0.0\n")
+    (dist_info / "extra.txt").write_text("sentinel")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    _copy_dist_info_from_metadata_directory(str(dist_info), staging)
+    assert (staging / "mypkg-1.0.0.dist-info" / "extra.txt").read_text() == "sentinel"
 
 
 def test_build_wheel_with_tags_produces_whl(tmp_path):

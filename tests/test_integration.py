@@ -166,6 +166,29 @@ def test_build_wheel_integration(integration_project, capfd):
     assert "source_called" in err
 
 
+def test_build_wheel_uses_metadata_directory(integration_project):
+    """build_wheel copies pre-built dist-info when metadata_directory is provided (PEP 517 contract)."""
+    meta_dir = integration_project.work_dir / "meta"
+    meta_dir.mkdir()
+    dist_info_name = prepare_metadata_for_build_wheel(str(meta_dir))
+    dist_info_path = meta_dir / dist_info_name
+    # Simulate a frontend adding an extra entry to the pre-built dist-info
+    (dist_info_path / "extra.txt").write_text("sentinel")
+
+    wheel_dir = integration_project.work_dir / "dist"
+    wheel_dir.mkdir()
+    # Pass the .dist-info path directly (spec-correct form)
+    wheel_name = build_wheel(str(wheel_dir), metadata_directory=str(dist_info_path))
+
+    with zipfile.ZipFile(wheel_dir / wheel_name) as zf:
+        names = zf.namelist()
+        assert any(n.endswith(".dist-info/extra.txt") for n in names), \
+            "Extra file from metadata_directory must be preserved in the wheel"
+        (entry,) = [n for n in names if n.endswith(".dist-info/METADATA")]
+        prepared = (dist_info_path / "METADATA").read_text(encoding="utf-8")
+        assert prepared.strip() == zf.read(entry).decode("utf-8").strip()
+
+
 def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     """With CONAN_PY_BUILD_PROFILE_AUTODETECT=1 a local profile is created; by default Conan default is used."""
     profile_path = integration_project.project_dir / "conan-py-build.profile"
