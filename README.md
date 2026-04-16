@@ -1,30 +1,21 @@
 # conan-py-build
 
-> **Note:** The contents of this repository are a **proof of concept** and
-> **highly experimental**. Not recommended for production use.
+A [PEP 517](https://peps.python.org/pep-0517/) build backend that uses
+[Conan](https://conan.io) to build Python C/C++ extensions.
 
-A minimal PEP 517 compliant build backend that uses [Conan](https://conan.io) to
-build Python C/C++ extensions.
+**[Documentation](https://conan-io.github.io/conan-py-build/)** ·
+[PyPI](https://pypi.org/project/conan-py-build/) ·
+[Examples](examples/)
 
-## Installation
-
-From [PyPI](https://pypi.org/project/conan-py-build/) (typical use):
+## Install
 
 ```bash
 pip install conan-py-build
 ```
 
-To work on this repository or try the current `main`:
+## Quick start
 
-```bash
-git clone https://github.com/conan-io/conan-py-build.git
-cd conan-py-build
-pip install -e .
-```
-
-## Quick Start
-
-1. Create a `pyproject.toml` for your package:
+1. Set `conan-py-build` as your build backend:
 
 ```toml
 [build-system]
@@ -36,7 +27,7 @@ name = "mypackage"
 version = "0.1.0"
 ```
 
-2. Create a `conanfile.py` with your C++ dependencies and build logic. Your `CMakeLists.txt` must use `install(TARGETS ... DESTINATION <package_name>)` so extensions end up in the wheel:
+2. Add a `conanfile.py` with your C++ dependencies:
 
 ```python
 from conan import ConanFile
@@ -62,198 +53,33 @@ class MyPackageConan(ConanFile):
         cmake.install()
 ```
 
-3. Build the wheel:
+3. Your `CMakeLists.txt` must install the extension
+   into the package directory so it ends up in the wheel:
+
+```cmake
+install(TARGETS _core DESTINATION mypackage)
+```
+
+4. Build:
 
 ```bash
 pip wheel . -w dist/ -vvv
 ```
 
-For a complete basic working example, see the [basic example](examples/basic/).
-
-## Configuration
-
-Pass configuration options via `--config-settings`:
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `host-profile` | Conan profile for host context | `default` |
-| `build-profile` | Conan profile for build context | `default` |
-| `build-dir` | Persistent build directory | temp dir |
-
-Configure options in `pyproject.toml` (nested under `[tool.conan-py-build]`):
-
-| Option | TOML section | Description | Default |
-|--------|--------------|-------------|---------|
-| `conanfile-path` | `[tool.conan-py-build]` | Path to the Conan recipe (directory containing `conanfile.py` or path to the file), relative to project root | `"."` (project root) |
-| `extra-profile`, `extra-profile-host`, … | `[tool.conan-py-build]` | Extra Conan profile file(s) — see [Profiles](#profiles) | (none) |
-| `version.file` | `[tool.conan-py-build.version]` | Python file containing `__version__ = "x.y.z"` (see [Dynamic version](#dynamic-version)) | (none) |
-| `version.provider` | `[tool.conan-py-build.version]` | Set to `"setuptools_scm"` for version from git tags. Mutually exclusive with `version.file`. | (none) |
-| `packages` | `[tool.conan-py-build.wheel]` | List of paths (relative to project root) of Python packages in the wheel. Each path must be a directory with `__init__.py` | `["src/<normalized_name>"]` |
-| `include` / `exclude` | `[tool.conan-py-build.sdist]` | Paths or glob patterns to add to or remove from the sdist | `[]` / `[]` |
-
-### Dynamic version
-
-Set `dynamic = ["version"]` in `[project]` (no `version` key) and configure the version source in `[tool.conan-py-build.version]`:
-
-**From a file** — reads `__version__ = "x.y.z"` from a Python file:
-
-```toml
-[tool.conan-py-build.version]
-file = "src/mypackage/__init__.py"
-```
-
-**From git tags (setuptools-scm)** — resolves version from VCS tags (e.g. `v1.0.0` → `1.0.0`):
-
-```toml
-[tool.conan-py-build.version]
-provider = "setuptools_scm"
-```
-
-The `setuptools-scm` options are configured in `[tool.setuptools_scm]` — see the
-[setuptools-scm docs](https://setuptools-scm.readthedocs.io/) for available options.
-
-> **Note:** `version.file` and `provider = "setuptools_scm"` are mutually exclusive.
-
-### License files (PEP 639)
-
-The backend supports [PEP 639](https://peps.python.org/pep-0639/) license metadata. Set `[project].license-files` in `pyproject.toml` to a list of glob patterns (e.g. `["LICENSE"]`) to include those files in the wheel under `.dist-info/licenses/` and add `License-File` entries to METADATA and to the sdist PKG-INFO. If `license-files` is not set, no license files are included.
-
-### Wheel packages
-
-You can control which Python packages are included in the wheel via
-`[tool.conan-py-build.wheel]` in `pyproject.toml`:
-
-- **`packages`**: list of paths (relative to the project root) that are Python
-  packages to include in the wheel. Each path must be a directory inside the
-  project.
-
-If `packages` is not set, the backend includes a single package at
-`src/<normalized_project_name>` (hyphens in the project name become underscores,
-e.g. `my-package` → `src/my_package`).
-
-**Conan recipe path.** If your recipe lives outside the project root (e.g.
-`subfolder/conanfile.py`), set `conanfile-path` so the backend runs
-`conan source`, `conan build` and `conan export-pkg` on that path:
-
-```toml
-[tool.conan-py-build]
-conanfile-path = "subfolder"
-```
-
-```toml
-[tool.conan-py-build.wheel]
-packages = ["src/mypackage", "src/other_package"]
-```
-
-See [basic-pybind11](examples/basic-pybind11/) for multiple packages (`python/...` + `src/...`).
-
-### Sdist include / exclude
-
-You can control what goes into the source distribution (sdist) via
-`[tool.conan-py-build.sdist]` in `pyproject.toml`:
-
-- **`sdist.include`**: paths to add to the sdist (e.g. files in default exclude
-  like `build/`, or extra dirs like `["docs/"]`).
-- **`sdist.exclude`**: paths or patterns to remove from the sdist (e.g. default
-  includes you don't want, like `["README.md"]`, or `["tests"]`).
-
-By default the sdist includes `pyproject.toml`, `CMakeLists.txt`, `conanfile.py`,
-`cmake/`, `src/`, `include/`, README and LICENSE, and excludes `__pycache__`,
-`*.pyc`, `.git`, `build`, `dist` and the like.
-
-```toml
-[tool.conan-py-build.sdist]
-include = ["docs/", "misc/"]
-exclude = [".github", "scripts", "README.md"]
-```
-
-### Profiles
-
-Host and build profiles are set via `--config-settings` (see table above):
-`host-profile` and `build-profile`, defaulting to Conan’s `default` profile.
-Example with Jinja profiles under `examples/profiles/` that use `include(default)`
-and set `WHEEL_*` for wheel tags. Set **`CONAN_CPYTHON_VERSION`** to the full
-interpreter version, e.g. `3.12.12`:
-
-```bash
-export CONAN_CPYTHON_VERSION=3.12.12
-pip wheel . --no-build-isolation \
-    --config-settings="host-profile=examples/profiles/linux.jinja" \
-    --config-settings="build-dir=./build" \
-    -w dist/
-```
-
-> **Wheel tags.** Override `{pyver}-{abi}-{platform}` wheel tags via
-> `WHEEL_PYVER`, `WHEEL_ABI` and/or `WHEEL_ARCH` in a profile's `[buildenv]`.
-
-**Extra profile in `pyproject.toml`.** You can add one extra Conan profile file
-via `[tool.conan-py-build].extra-profile`. It is **composed on top of** the
-profiles applied first (default or those passed via `-C`). The extra profile is
-applied last, so it lets you override values. For example, if your extension
-needs at least C++17, put `compiler.cppstd=17` in a profile file and set
-`extra-profile = "cpp17.profile"` so that override is applied on top of the
-default or CI profile.
-
-Keys: `extra-profile`, `extra-profile-host`, `extra-profile-build`,
-`extra-profile-all`. Path relative to project root.
-
-```toml
-[tool.conan-py-build]
-extra-profile = "cpp17.profile"
-```
-
-### Conan home and default profile
-
-The backend **always uses Conan’s default home** (e.g. `~/.conan2`), or the one set via 
-`CONAN_HOME` or the `.conanrc` file.
-
-By default the backend uses Conan's **default** profile. To use an autodetected
-profile, set
-**`CONAN_PY_BUILD_PROFILE_AUTODETECT=1`** (or `true` / `yes`).
-
-### Support for shared library builds
-
-If your extension links to shared libs from Conan, the backend collects them
-during the build and merges that output into the **wheel staging root** next to
-your packages (RPATH is fixed on the extension to point at the parent directory so
-those libs resolve).
+See the [documentation](https://conan-io.github.io/conan-py-build/)
+for the full getting started guide, configuration, profiles,
+dynamic versioning, and more.
 
 ## Examples
 
-See the [examples/](examples/) directory for complete working examples:
+See the [examples/](examples/) directory:
 
-- **[basic](examples/basic/)**: Extension with `fmt`, recipe in `conan/` via `conanfile-path`
-- **[basic-pybind11](examples/basic-pybind11/)**: pybind11 + `fmt` (dynamic version from `__init__.py`, custom `wheel.packages`, PEP 639 license files)
-- **[basic-nanobind](examples/basic-nanobind/)**: nanobind + `fmt`, with `extra-profile` for C++17
-- **[external-sources](examples/external-sources/)**: pybind11. C++ dependency fetched in `source()`
-- **[cibw-example](examples/cibw-example/)**: pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/) (profiles under `examples/cibw-example/profiles/`, see CI workflow)
-
-## Development
-
-To try changes against a project that uses this backend (e.g. one of the
-examples), install the backend in editable mode and build with no isolation so
-it uses your local copy:
-
-```bash
-pip install -e .   # from the conan-py-build repo root
-cd examples/basic  # or your own project
-pip wheel . --no-build-isolation -w dist/
-```
-
-## Running tests
-
-Install the build backend in editable mode with dev dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-Run the test suite:
-
-```bash
-pytest tests/ -v
-```
+- **[basic](examples/basic/)** — `fmt` extension, recipe via `conanfile-path`
+- **[basic-pybind11](examples/basic-pybind11/)** — pybind11 + `fmt`, dynamic version, PEP 639
+- **[basic-nanobind](examples/basic-nanobind/)** — nanobind + `fmt`, `extra-profile` for C++17
+- **[external-sources](examples/external-sources/)** — pybind11, C++ dep fetched in `source()`
+- **[cibw-example](examples/cibw-example/)** — pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).

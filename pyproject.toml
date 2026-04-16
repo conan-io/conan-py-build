@@ -13,7 +13,7 @@ authors = [
     {name = "The Conan team", email = "conan@jfrog.com"}
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -41,9 +41,14 @@ dev = [
     "build",
     "setuptools-scm",
 ]
+docs = [
+    "mkdocs>=1.6,<2",
+    "mkdocs-material",
+]
 
 [project.urls]
 Homepage = "https://github.com/conan-io/conan-py-build"
+Documentation = "https://conan-io.github.io/conan-py-build/"
 Issues = "https://github.com/conan-io/conan-py-build/issues"
 
 [tool.setuptools.packages.find]

@@ -1,0 +1,42 @@
+site_name: conan-py-build
+site_description: PEP 517 build backend using Conan for Python C/C++ extensions
+site_url: https://conan-io.github.io/conan-py-build/
+repo_url: https://github.com/conan-io/conan-py-build
+repo_name: conan-io/conan-py-build
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+  features:
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - tables
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+hooks:
+  - docs/hooks.py
+
+nav:
+  - Home: index.md
+  - Configuration: configuration.md
+  - Examples: examples.md
+  - Development: development.md

@@ -81,6 +81,16 @@ jobs:
             examples/basic-nanobind/dist/
             examples/external-sources/dist/
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[docs]"
+      - run: mkdocs build --strict
+
   build-default:
     strategy:
       fail-fast: false
