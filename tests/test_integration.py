@@ -206,6 +206,45 @@ def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
 
 
+def test_generate_can_modify_python_package(tmp_path, monkeypatch):
+    """generate() modifications to __init__.py are reflected in the wheel, not the placeholder."""
+    _CONANFILE = """\
+from conan import ConanFile
+from pathlib import Path
+
+
+class Pkg(ConanFile):
+    name = "integration_pkg"
+    version = "0.1.0"
+
+    def generate(self):
+        source = Path(self.source_folder)
+        template = (source / "template.py").read_text()
+        init = source / "src" / "integration_pkg" / "__init__.py"
+        init.write_text("# Generated from template\\n" + template)
+
+    def build(self):
+        pass
+"""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, conanfile=_CONANFILE, init_content="# placeholder\n")
+    (proj / "template.py").write_text("GENERATED = True\n")
+
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    wheel_dir = tmp_path / "dist"
+    wheel_dir.mkdir()
+    wheel_name = build_wheel(str(wheel_dir), config_settings=None)
+
+    with zipfile.ZipFile(wheel_dir / wheel_name) as zf:
+        init = zf.read("integration_pkg/__init__.py").decode("utf-8")
+
+    assert "Generated from template" in init
+    assert "GENERATED = True" in init
+    assert "placeholder" not in init
+
+
 def _git_init_and_tag(cwd, tag):
     """Initialise a throw-away git repo, commit everything and create *tag*."""
     env = {

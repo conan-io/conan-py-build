@@ -457,13 +457,9 @@ def _do_build_wheel(
     metadata_directory: Optional[str] = None,
 ) -> str:
     """Internal function that performs the actual wheel build."""
-    
+
     # Staging = wheel platlib; build tree stays outside via cmake_layout.
     staging_dir = base_dir / "package"
-    for python_package_dir in _get_wheel_packages(source_dir, name):
-        package_dir = base_dir / "package" / python_package_dir.name
-        package_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
 
     build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
@@ -531,6 +527,11 @@ def _do_build_wheel(
         build_result = conan_api.command.run(build_cmd)
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
+
+    for python_package_dir in _get_wheel_packages(source_dir, name):
+        package_dir = staging_dir / python_package_dir.name
+        package_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
 
     print("Running conan export-pkg...", flush=True)
     
