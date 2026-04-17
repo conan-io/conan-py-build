@@ -206,7 +206,7 @@ def test_build_wheel_with_profile_autodetect(integration_project, monkeypatch):
     assert "[settings]" in content or "os=" in content, "Profile should contain Conan settings"
 
 
-def test_generate_can_modify_python_package(tmp_path, monkeypatch):
+def test_generate_can_modify_python_package(integration_project):
     """generate() modifications to __init__.py are reflected in the wheel, not the placeholder."""
     _CONANFILE = """\
 from conan import ConanFile
@@ -224,13 +224,10 @@ class Pkg(ConanFile):
     def build(self):
         pass
 """
-    proj = tmp_path / "proj"
-    make_integration_project(proj, conanfile=_CONANFILE, init_content="# placeholder\n")
+    (integration_project.project_dir / "conanfile.py").write_text(_CONANFILE)
+    (integration_project.project_dir / "src" / "integration_pkg" / "__init__.py").write_text("# placeholder\n")
 
-    monkeypatch.chdir(proj)
-    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
-
-    wheel_dir = tmp_path / "dist"
+    wheel_dir = integration_project.work_dir / "dist"
     wheel_dir.mkdir()
     wheel_name = build_wheel(str(wheel_dir), config_settings=None)
 
