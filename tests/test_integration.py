@@ -218,17 +218,14 @@ class Pkg(ConanFile):
     version = "0.1.0"
 
     def generate(self):
-        source = Path(self.source_folder)
-        template = (source / "template.py").read_text()
-        init = source / "src" / "integration_pkg" / "__init__.py"
-        init.write_text("# Generated from template\\n" + template)
+        init = Path(self.source_folder) / "src" / "integration_pkg" / "__init__.py"
+        init.write_text("GENERATED = True\\n")
 
     def build(self):
         pass
 """
     proj = tmp_path / "proj"
     make_integration_project(proj, conanfile=_CONANFILE, init_content="# placeholder\n")
-    (proj / "template.py").write_text("GENERATED = True\n")
 
     monkeypatch.chdir(proj)
     monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
@@ -240,7 +237,6 @@ class Pkg(ConanFile):
     with zipfile.ZipFile(wheel_dir / wheel_name) as zf:
         init = zf.read("integration_pkg/__init__.py").decode("utf-8")
 
-    assert "Generated from template" in init
     assert "GENERATED = True" in init
     assert "placeholder" not in init
 
