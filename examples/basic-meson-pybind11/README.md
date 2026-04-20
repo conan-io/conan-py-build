@@ -9,7 +9,7 @@ Uses `MesonToolchain` + `PkgConfigDeps` instead of `CMakeToolchain` + `CMakeDeps
 # From the repo root, install the backend first
 pip install -e .
 
-# Then build the example (requires `meson` and `ninja` in PATH)
+# Then build the example (Conan provides meson + ninja via tool_requires)
 cd examples/basic-meson-pybind11
 pip wheel . --no-build-isolation -w dist/ -vvv
 ```

@@ -63,8 +63,6 @@ jobs:
         shell: bash
       - name: Install backend
         run: pip install -e .
-      - name: Install meson and ninja (for basic-meson-pybind11)
-        run: pip install meson ninja
       - name: Build wheels
         run: |
           export CONAN_CPYTHON_VERSION=${{ matrix.py }}
@@ -110,8 +108,6 @@ jobs:
           python-version: "3.12"
       - name: Install backend
         run: pip install -e .
-      - name: Install meson and ninja (for basic-meson-pybind11)
-        run: pip install meson ninja
       - name: Build wheels
         run: |
           pip wheel examples/basic --no-build-isolation -w examples/basic/dist/ -vv
