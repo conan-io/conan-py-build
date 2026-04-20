@@ -4,17 +4,8 @@ build-backend = "conan_py_build.build"
 
 [project]
 name = "myadder-meson-pybind11"
-dynamic = ["version"]
-description = "A simple Python package with C++ code (pybind11) built with Meson"
+version = "0.1.0"
+description = "A Python extension built with Meson and pybind11"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.8"
-
-[tool.conan-py-build.version]
-file = "python/myadder_meson_pybind11/__init__.py"
-
-[tool.conan-py-build.wheel]
-packages = ["python/myadder_meson_pybind11", "src/extra_utils"]
-
-[tool.conan-py-build.sdist]
-exclude = ["README.md"]

@@ -8,7 +8,6 @@ class MyadderMesonPybind11Conan(ConanFile):
     version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "MesonToolchain", "PkgConfigDeps"
-    default_options = {"fmt/*:shared": True}
 
     def layout(self):
         basic_layout(self)
