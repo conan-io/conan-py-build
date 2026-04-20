@@ -17,6 +17,7 @@ class MyadderMesonPybind11Conan(ConanFile):
         self.requires("fmt/12.1.0")
 
     def build_requirements(self):
+        self.tool_requires("meson/[>=1.4.0 <2]")
         self.tool_requires("pkgconf/[>=2.2 <3]")
 
     def build(self):
