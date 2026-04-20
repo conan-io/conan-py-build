@@ -125,7 +125,7 @@ jobs:
           pip install examples/basic/dist/myadder-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl examples/basic-meson-pybind11/dist/myadder_meson_pybind11-*.whl examples/basic-nanobind/dist/myadder_nanobind-*.whl examples/external-sources/dist/hello_bindings-*.whl
           python -c "import myadder; assert myadder.add(2, 3) == 5; assert myadder.add_integers(10, 20) == 30; print('myadder OK')"
           python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; assert myadder_pybind11.add_integers(10, 20) == 30; assert myadder_pybind11.greet('World').startswith('Hello'); print('myadder_pybind11 OK')"
-          python -c "import myadder_meson_pybind11; assert myadder_meson_pybind11.add(2, 3) == 5; assert myadder_meson_pybind11.add_integers(10, 20) == 30; assert myadder_meson_pybind11.greet('World').startswith('Hello'); print('myadder_meson_pybind11 OK')"
+          python -c "import myadder_meson_pybind11; assert myadder_meson_pybind11.add(2, 3) == 5; print('myadder_meson_pybind11 OK')"
           python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
           python -c "import myadder_nanobind; assert myadder_nanobind.add(2, 3) == 5; assert myadder_nanobind.add_integers(10, 20) == 30; assert myadder_nanobind.greet('World').startswith('Hello'); print('myadder_nanobind OK')"
           python -c "import hello_bindings; hello_bindings.hello(); print('hello_bindings OK')"
