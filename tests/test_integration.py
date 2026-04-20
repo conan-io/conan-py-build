@@ -166,6 +166,20 @@ def test_build_wheel_integration(integration_project, capfd):
     assert "source_called" in err
 
 
+def test_wheel_does_not_contain_conan_output(integration_project):
+    """Conan's output folder (build tree, generators) must not leak into the wheel platlib."""
+    dist_dir = integration_project.work_dir / "dist"
+    dist_dir.mkdir()
+    build_wheel(str(dist_dir), config_settings=None)
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        names = zf.namelist()
+
+    leaked = [n for n in names if n.startswith(("build/", "conan_out/", "CMakeFiles/"))]
+    assert not leaked, f"Conan output leaked into wheel: {leaked}"
+
+
 def test_build_wheel_uses_metadata_directory(integration_project):
     """build_wheel copies pre-built dist-info when metadata_directory is provided (PEP 517 contract)."""
     meta_dir = integration_project.work_dir / "meta"
