@@ -1,7 +1,6 @@
 from conan import ConanFile
 from conan.tools.layout import basic_layout
-from conan.tools.meson import Meson, MesonToolchain
-from conan.tools.gnu import PkgConfigDeps
+from conan.tools.meson import Meson
 
 
 class MyadderMesonPybind11Conan(ConanFile):
@@ -13,9 +12,6 @@ class MyadderMesonPybind11Conan(ConanFile):
 
     def layout(self):
         basic_layout(self)
-        # Keep Meson's build tree outside `-of` so it doesn't end up in the wheel platlib.
-        self.folders.build = "../build_meson"
-        self.folders.generators = "../build_meson/conan"
 
     def requirements(self):
         self.requires("pybind11/3.0.1")

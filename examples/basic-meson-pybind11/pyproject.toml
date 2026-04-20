@@ -17,6 +17,4 @@ file = "python/myadder_meson_pybind11/__init__.py"
 packages = ["python/myadder_meson_pybind11", "src/extra_utils"]
 
 [tool.conan-py-build.sdist]
-# The default sdist include list targets CMake; add the Meson build file explicitly.
-include = ["meson.build"]
 exclude = ["README.md"]
