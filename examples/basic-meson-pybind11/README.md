@@ -1,7 +1,6 @@
 # Basic Meson + pybind11 Example - myadder_meson_pybind11
 
 Minimal Python extension using **pybind11** and **Meson** as the build system.
-Uses `MesonToolchain` + `PkgConfigDeps` instead of `CMakeToolchain` + `CMakeDeps`.
 
 ## Build and Install
 
