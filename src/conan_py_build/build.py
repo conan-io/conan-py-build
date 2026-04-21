@@ -458,10 +458,11 @@ def _do_build_wheel(
 ) -> str:
     """Internal function that performs the actual wheel build."""
 
-    # Staging = wheel platlib; build tree stays outside via cmake_layout.
+    # Keep Conan's output folder separate from the wheel platlib so the build
+    # tree doesn't land inside the wheel regardless of the build system used.
     staging_dir = base_dir / "package"
+    conan_out = (base_dir / "conan_out").resolve()
 
-    build_folder_conf = f"tools.cmake.cmake_layout:build_folder={(base_dir / 'build').resolve()}"
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
     runtime_deploy_dir = (base_dir / "runtime_deploy").resolve()
@@ -506,13 +507,11 @@ def _do_build_wheel(
         "build",
         resolved_conanfile,
         "-of",
-        str(staging_dir),
+        str(conan_out),
         "-d",
         "runtime_deploy",
         "--deployer-folder",
         str(runtime_deploy_dir),
-        "-c",
-        build_folder_conf,
         "-c",
         user_presets_conf,
         "--build=missing",
@@ -542,11 +541,9 @@ def _do_build_wheel(
         "export-pkg",
         resolved_conanfile,
         "-of",
-        str(staging_dir),
+        str(conan_out),
         "-tf",
         "",
-        "-c",
-        build_folder_conf,
         "-c",
         user_presets_conf,
     ]

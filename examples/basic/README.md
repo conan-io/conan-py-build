@@ -55,5 +55,5 @@ the build). To keep artifacts for inspection, pass a path:
 pip wheel . --no-build-isolation --config-settings="build-dir=./my-build" -w dist/ -vvv
 
 # Inspect the directories:
-ls ./my-build/build/     # CMake build tree
-ls ./my-build/package/   # Wheel contents
+ls ./my-build/conan_out/   # Conan output (build tree, generators, package)
+ls ./my-build/package/     # Wheel contents (platlib)
