@@ -142,8 +142,9 @@ libraries automatically from the Conan deploy output.
 
 ## Sdist defaults
 
-Included: `pyproject.toml`, `CMakeLists.txt`,
-`conanfile.py`, `cmake/`, `src/`, `include/`,
+Included: `pyproject.toml`, `conanfile.py`, your build
+system's top-level file (`CMakeLists.txt`,
+`meson.build`), `cmake/`, `src/`, `include/`,
 README, LICENSE.
 Excluded: `__pycache__`, `*.pyc`, `.git`,
 `build`, `dist`.

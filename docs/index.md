@@ -16,6 +16,13 @@ pip install conan-py-build
 Minimal project: a Python package with a C++ extension
 that uses a Conan dependency.
 
+!!! note
+
+    The walkthrough below uses CMake, but the backend is build-system agnostic
+    — it works with anything Conan can drive. For a Meson version of the same
+    project, see
+    [basic-meson-pybind11](https://github.com/conan-io/conan-py-build/tree/main/examples/basic-meson-pybind11).
+
 ### Project layout
 
 ```text
@@ -69,11 +76,13 @@ class MyPackageConan(ConanFile):
 
 ### `CMakeLists.txt`
 
-The backend takes everything that `cmake --install`
-produces and stages it into the wheel. For the extension
-to be importable, **the `DESTINATION` in `install()` must
-match your Python package name** — that is how the
-compiled `.so` / `.pyd` ends up next to `__init__.py`:
+The backend takes everything that Conan's `package()`
+step stages and copies it into the wheel. For the
+extension to be importable, **the compiled module must
+land under a directory that matches your Python package
+name** — that is how the `.so` / `.pyd` ends up next to
+`__init__.py`. With CMake, that means the `DESTINATION`
+in `install()` must match the package name:
 
 ```cmake
 cmake_minimum_required(VERSION 3.15)
