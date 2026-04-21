@@ -68,6 +68,7 @@ jobs:
           export CONAN_CPYTHON_VERSION=${{ matrix.py }}
           pip wheel examples/basic --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic/dist/ -vv
           pip wheel examples/basic-pybind11 --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic-pybind11/dist/ -vv
+          pip wheel examples/basic-meson-pybind11 --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic-meson-pybind11/dist/ -vv
           pip wheel examples/basic-nanobind --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/basic-nanobind/dist/ -vv
           pip wheel examples/external-sources --no-build-isolation -C host-profile=../profiles/${{ matrix.profile }} -w examples/external-sources/dist/ -vv
         shell: bash
@@ -78,6 +79,7 @@ jobs:
           path: |
             examples/basic/dist/
             examples/basic-pybind11/dist/
+            examples/basic-meson-pybind11/dist/
             examples/basic-nanobind/dist/
             examples/external-sources/dist/
 
@@ -110,14 +112,16 @@ jobs:
         run: |
           pip wheel examples/basic --no-build-isolation -w examples/basic/dist/ -vv
           pip wheel examples/basic-pybind11 --no-build-isolation -w examples/basic-pybind11/dist/ -vv
+          pip wheel examples/basic-meson-pybind11 --no-build-isolation -w examples/basic-meson-pybind11/dist/ -vv
           pip wheel examples/basic-nanobind --no-build-isolation -w examples/basic-nanobind/dist/ -vv
           pip wheel examples/external-sources --no-build-isolation -w examples/external-sources/dist/ -vv
         shell: bash
       - name: Test wheels
         run: |
-          pip install examples/basic/dist/myadder-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl examples/basic-nanobind/dist/myadder_nanobind-*.whl examples/external-sources/dist/hello_bindings-*.whl
+          pip install examples/basic/dist/myadder-*.whl examples/basic-pybind11/dist/myadder_pybind11-*.whl examples/basic-meson-pybind11/dist/myadder_meson_pybind11-*.whl examples/basic-nanobind/dist/myadder_nanobind-*.whl examples/external-sources/dist/hello_bindings-*.whl
           python -c "import myadder; assert myadder.add(2, 3) == 5; assert myadder.add_integers(10, 20) == 30; print('myadder OK')"
           python -c "import myadder_pybind11; assert myadder_pybind11.add(2, 3) == 5; assert myadder_pybind11.add_integers(10, 20) == 30; assert myadder_pybind11.greet('World').startswith('Hello'); print('myadder_pybind11 OK')"
+          python -c "import myadder_meson_pybind11; assert myadder_meson_pybind11.add(2, 3) == 5; print('myadder_meson_pybind11 OK')"
           python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
           python -c "import myadder_nanobind; assert myadder_nanobind.add(2, 3) == 5; assert myadder_nanobind.add_integers(10, 20) == 30; assert myadder_nanobind.greet('World').startswith('Hello'); print('myadder_nanobind OK')"
           python -c "import hello_bindings; hello_bindings.hello(); print('hello_bindings OK')"
@@ -135,5 +139,6 @@ jobs:
           path: |
             examples/basic/dist/
             examples/basic-pybind11/dist/
+            examples/basic-meson-pybind11/dist/
             examples/basic-nanobind/dist/
             examples/external-sources/dist/

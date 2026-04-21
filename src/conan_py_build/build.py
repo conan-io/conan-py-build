@@ -624,6 +624,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "pyproject.toml",
         "CMakeLists.txt",
         "cmake",
+        "meson.build",
         "src",
         "include",
         "README.md",

@@ -1,0 +1,11 @@
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[project]
+name = "myadder-meson-pybind11"
+version = "0.1.0"
+description = "A Python extension built with Meson and pybind11"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.8"

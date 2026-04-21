@@ -76,6 +76,7 @@ See the [examples/](examples/) directory:
 
 - **[basic](examples/basic/)** — `fmt` extension, recipe via `conanfile-path`
 - **[basic-pybind11](examples/basic-pybind11/)** — pybind11 + `fmt`, dynamic version, PEP 639
+- **[basic-meson-pybind11](examples/basic-meson-pybind11/)** — pybind11 + `fmt` built with Meson instead of CMake
 - **[basic-nanobind](examples/basic-nanobind/)** — nanobind + `fmt`, `extra-profile` for C++17
 - **[external-sources](examples/external-sources/)** — pybind11, C++ dep fetched in `source()`
 - **[cibw-example](examples/cibw-example/)** — pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/)
