@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://blog.conan.io/conan-py-build/</loc>
+         <loc>https://conan-py-build.conan.io/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://blog.conan.io/conan-py-build/configuration/</loc>
+         <loc>https://conan-py-build.conan.io/configuration/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://blog.conan.io/conan-py-build/development/</loc>
+         <loc>https://conan-py-build.conan.io/development/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://blog.conan.io/conan-py-build/examples/</loc>
+         <loc>https://conan-py-build.conan.io/examples/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
 </urlset>
