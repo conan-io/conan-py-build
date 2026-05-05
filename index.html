@@ -696,6 +696,13 @@ extensions using <a href="https://conan.io">Conan</a>.</em></p>
 <h2 id="getting-started">Getting started</h2>
 <p>Minimal project: a Python package with a C++ extension
 that uses a Conan dependency.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The walkthrough below uses CMake, but the backend is build-system agnostic
+— it works with anything Conan can drive. For a Meson version of the same
+project, see
+<a href="https://github.com/conan-io/conan-py-build/tree/main/examples/basic-meson-pybind11">basic-meson-pybind11</a>.</p>
+</div>
 <h3 id="project-layout">Project layout</h3>
 <div class="highlight"><pre><span></span><code>mypackage/
 ├── pyproject.toml
@@ -739,11 +746,13 @@ that uses a Conan dependency.</p>
         <span class="n">cmake</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
 </code></pre></div>
 <h3 id="cmakeliststxt"><code>CMakeLists.txt</code></h3>
-<p>The backend takes everything that <code>cmake --install</code>
-produces and stages it into the wheel. For the extension
-to be importable, <strong>the <code>DESTINATION</code> in <code>install()</code> must
-match your Python package name</strong> — that is how the
-compiled <code>.so</code> / <code>.pyd</code> ends up next to <code>__init__.py</code>:</p>
+<p>The backend takes everything that Conan's <code>package()</code>
+step stages and copies it into the wheel. For the
+extension to be importable, <strong>the compiled module must
+land under a directory that matches your Python package
+name</strong> — that is how the <code>.so</code> / <code>.pyd</code> ends up next to
+<code>__init__.py</code>. With CMake, that means the <code>DESTINATION</code>
+in <code>install()</code> must match the package name:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cmake_minimum_required</span><span class="p">(</span><span class="s">VERSION</span><span class="w"> </span><span class="s">3.15</span><span class="p">)</span>
 <span class="nb">project</span><span class="p">(</span><span class="s">mypackage</span><span class="w"> </span><span class="s">LANGUAGES</span><span class="w"> </span><span class="s">CXX</span><span class="p">)</span>
 
