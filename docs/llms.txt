@@ -8,13 +8,13 @@
 
 ## Docs
 
-- [Home](https://blog.conan.io/conan-py-build/): getting started with a minimal project (pyproject.toml, conanfile.py, and your build system of choice)
-- [Configuration](https://blog.conan.io/conan-py-build/configuration/): --config-settings, pyproject.toml options, profiles, wheel tags (WHEEL_PYVER/ABI/ARCH), shared libraries, dynamic version, PEP 639 license files
-- [Examples](https://blog.conan.io/conan-py-build/examples/): pybind11, nanobind, meson, cibuildwheel
-- [Development](https://blog.conan.io/conan-py-build/development/): editable install, tests, docs
+- [Home](https://conan-py-build.conan.io): getting started with a minimal project (pyproject.toml, conanfile.py, and your build system of choice)
+- [Configuration](https://conan-py-build.conan.io/configuration/): --config-settings, pyproject.toml options, profiles, wheel tags (WHEEL_PYVER/ABI/ARCH), shared libraries, dynamic version, PEP 639 license files
+- [Examples](https://conan-py-build.conan.io/examples/): pybind11, nanobind, meson, cibuildwheel
+- [Development](https://conan-py-build.conan.io/development/): editable install, tests, docs
 
 ## Source
 
 - [GitHub](https://github.com/conan-io/conan-py-build)
 - [PyPI](https://pypi.org/project/conan-py-build/)
-- [Full docs as plain text](https://blog.conan.io/conan-py-build/llms-full.txt)
+- [Full docs as plain text](https://conan-py-build.conan.io/llms-full.txt)
