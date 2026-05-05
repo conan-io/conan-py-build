@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "conan-py-build"
-version = "0.4.0"
+version = "0.4.1"
 description = "A minimal PEP 517 compliant build backend that uses Conan to build Python C/C++ extensions"
 readme = "README.md"
 license = {text = "MIT"}
@@ -48,7 +48,7 @@ docs = [
 
 [project.urls]
 Homepage = "https://github.com/conan-io/conan-py-build"
-Documentation = "https://blog.conan.io/conan-py-build/"
+Documentation = "https://conan-py-build.conan.io"
 Issues = "https://github.com/conan-io/conan-py-build/issues"
 
 [tool.setuptools.packages.find]
