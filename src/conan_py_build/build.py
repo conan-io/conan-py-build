@@ -304,14 +304,15 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path)
         f.write(content)
 
 
-def _collect_entry_point_groups(std_metadata) -> dict:
-    """Return {group: {name: target}} from [project.scripts/gui-scripts/entry-points]."""
+def _write_entry_points(dist_info_dir: Path, metadata: dict, project_dir: Path) -> None:
+    """Write entry_points.txt per PEP 621 / PyPA entry-points spec; skip if empty."""
+    std = _get_standard_metadata(metadata, project_dir)
     groups: dict = {}
-    if std_metadata.scripts:
-        groups["console_scripts"] = dict(std_metadata.scripts)
-    if std_metadata.gui_scripts:
-        groups["gui_scripts"] = dict(std_metadata.gui_scripts)
-    for group, entries in (std_metadata.entrypoints or {}).items():
+    if std.scripts:
+        groups["console_scripts"] = std.scripts
+    if std.gui_scripts:
+        groups["gui_scripts"] = std.gui_scripts
+    for group, entries in (std.entrypoints or {}).items():
         if not entries:
             continue
         if group in groups:
@@ -319,14 +320,7 @@ def _collect_entry_point_groups(std_metadata) -> dict:
                 f"Entry point group {group!r} declared in both "
                 "[project.entry-points] and [project.scripts]/[project.gui-scripts]."
             )
-        groups[group] = dict(entries)
-    return groups
-
-
-def _write_entry_points(dist_info_dir: Path, metadata: dict, project_dir: Path) -> None:
-    """Write entry_points.txt per PEP 621 / PyPA entry-points spec; skip if empty."""
-    std_metadata = _get_standard_metadata(metadata, project_dir)
-    groups = _collect_entry_point_groups(std_metadata)
+        groups[group] = entries
     if not groups:
         return
 
