@@ -421,6 +421,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#entry-points-pep-621" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points (PEP 621)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#license-files-pep-639" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -607,6 +618,17 @@
     <span class="md-ellipsis">
       
         Conan home
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points-pep-621" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points (PEP 621)
       
     </span>
   </a>
@@ -841,6 +863,27 @@ Working examples for Linux, macOS and Windows live under
 or <code>CONAN_HOME</code> / <code>.conanrc</code>). Set
 <code>CONAN_PY_BUILD_PROFILE_AUTODETECT=1</code> to autodetect
 the profile instead of requiring <code>default</code>.</p>
+<h2 id="entry-points-pep-621">Entry points (PEP 621)</h2>
+<p><code>[project.scripts]</code>, <code>[project.gui-scripts]</code> and
+<code>[project.entry-points.*]</code> from <code>pyproject.toml</code> are
+written to <code>&lt;pkg&gt;.dist-info/entry_points.txt</code> in the
+wheel, per the PyPA
+<a href="https://packaging.python.org/en/latest/specifications/entry-points/">entry points specification</a>.
+Installers create the corresponding console/GUI
+wrappers at install time; runtime tools like
+<code>importlib.metadata.entry_points()</code> read them
+from this file.</p>
+<div class="highlight"><pre><span></span><code><span class="k">[project.scripts]</span>
+<span class="n">mycli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.cli:main&quot;</span>
+
+<span class="k">[project.gui-scripts]</span>
+<span class="n">mygui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.gui:run&quot;</span>
+
+<span class="k">[project.entry-points.</span><span class="s2">&quot;myplugin.hooks&quot;</span><span class="k">]</span>
+<span class="n">on_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.hooks:on_event&quot;</span>
+</code></pre></div>
+<p>The file is only written when at least one entry
+point is declared.</p>
 <h2 id="license-files-pep-639">License files (PEP 639)</h2>
 <p>Set <code>license-files</code> in <code>[project]</code>
 (e.g. <code>["LICENSE"]</code>) to include license files in the
