@@ -21,6 +21,7 @@ from conan_py_build.build import (
     _get_wheel_packages,
     _create_dist_info,
     _write_entry_points,
+    _extra_arguments,
     _build_wheel_with_tags,
     _copy_license_files_from_paths,
     _validate_version_config,
@@ -155,6 +156,44 @@ def test_move_deploy_to_wheel_copies_shared_libs_next_to_extension(tmp_path):
     (pkg / ext).write_text("ext", encoding="utf-8")
     move_deploy_to_wheel(deploy, staging)
     assert (pkg / "libdep.so").read_text() == "so"
+
+
+def test_extra_arguments_empty_when_unset():
+    assert _extra_arguments({}) == []
+    assert _extra_arguments({"extra-arguments": []}) == []
+
+
+def test_extra_arguments_returns_list_verbatim():
+    args = ["-s=compiler.cppstd=17", "-o=gdal/*:shared=True", "-c=tools.build:jobs=4"]
+    assert _extra_arguments({"extra-arguments": args}) == args
+
+
+def test_extra_arguments_supports_pair_form():
+    """Pair-form ``["-s", "value"]`` is passed through unchanged — argparse
+    accepts both ``-s value`` and ``-s=value`` on Conan's CLI."""
+    args = ["-s", "compiler.cppstd=17", "-o", "gdal/*:shared=True", "-c", "tools.build:jobs=4"]
+    assert _extra_arguments({"extra-arguments": args}) == args
+
+
+def test_extra_arguments_supports_mixed_pair_and_equals_form():
+    """Mixing equals-form and pair-form in the same list works — argparse
+    processes each token independently."""
+    args = [
+        "-s=compiler.cppstd=17",
+        "-o", "gdal/*:shared=True",
+        "-c=tools.build:jobs=4",
+    ]
+    assert _extra_arguments({"extra-arguments": args}) == args
+
+
+def test_extra_arguments_rejects_non_list():
+    with pytest.raises(RuntimeError, match="must be a list of strings"):
+        _extra_arguments({"extra-arguments": "-s=compiler.cppstd=17"})
+
+
+def test_extra_arguments_rejects_non_string_items():
+    with pytest.raises(RuntimeError, match="must be a list of strings"):
+        _extra_arguments({"extra-arguments": ["-s", {"k": "v"}]})
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):

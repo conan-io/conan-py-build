@@ -20,6 +20,7 @@ All project-level options live under
 |--------|--------------|-------------|---------|
 | `conanfile-path` | `[tool.conan-py-build]` | Path to the Conan recipe, relative to project root | `"."` |
 | `extra-profile` | `[tool.conan-py-build]` | Extra Conan profile composed on top of the active one | (none) |
+| `extra-arguments` | `[tool.conan-py-build]` | Extra Conan CLI flags appended to `conan build` and `conan export-pkg` | `[]` |
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
@@ -28,6 +29,10 @@ All project-level options live under
 Variants for extra profiles: `extra-profile-host`,
 `extra-profile-build`, `extra-profile-all`.
 Paths relative to project root.
+
+For one-off Conan overrides without shipping a separate
+profile file, use `extra-arguments` (see *Extra Conan
+arguments* below).
 
 Default `packages` is `src/<normalized_project_name>`
 (hyphens → underscores).
@@ -118,6 +123,47 @@ The backend uses Conan's default home (`~/.conan2`,
 or `CONAN_HOME` / `.conanrc`). Set
 `CONAN_PY_BUILD_PROFILE_AUTODETECT=1` to autodetect
 the profile instead of requiring `default`.
+
+## Extra Conan arguments
+
+CLI flags appended to `conan build` and
+`conan export-pkg`. Symmetric with `extra-profile`,
+with higher precedence — CLI flags win against any
+profile entry.
+
+Bump `compiler.cppstd` to match a transitive dep
+(e.g. `gdal/3.12.1` requires C++17, MSVC defaults
+to 14):
+
+```toml
+[tool.conan-py-build]
+extra-arguments = ["-s=compiler.cppstd=17"]
+```
+
+Disable an optional dep feature and pin parallelism:
+
+```toml
+[tool.conan-py-build]
+extra-arguments = [
+    "-o=gdal/*:with_arrow=False",
+    "-c=tools.build:jobs=4",
+]
+```
+
+For values with embedded double quotes (dict / list
+`[conf]` literals), use TOML literal strings (`'...'`):
+
+```toml
+extra-arguments = [
+    '-c=tools.build:cflags+=["-O2", "-fPIC"]',
+    '-c=tools.cmake.cmaketoolchain:extra_variables={"FOO": "bar"}',
+]
+```
+
+Any Conan CLI flag works: `-s` / `-o` / `-c` (host),
+`-s:b` / `-o:b` / `-c:b` (build context),
+`--build=...`, `--lockfile=...`. Pair-form
+(`["-s", "compiler.cppstd=17"]`) is also accepted.
 
 ## Entry points (PEP 621)
 
