@@ -168,6 +168,24 @@ def test_extra_arguments_returns_list_verbatim():
     assert _extra_arguments({"extra-arguments": args}) == args
 
 
+def test_extra_arguments_supports_pair_form():
+    """Pair-form ``["-s", "value"]`` is passed through unchanged — argparse
+    accepts both ``-s value`` and ``-s=value`` on Conan's CLI."""
+    args = ["-s", "compiler.cppstd=17", "-o", "gdal/*:shared=True", "-c", "tools.build:jobs=4"]
+    assert _extra_arguments({"extra-arguments": args}) == args
+
+
+def test_extra_arguments_supports_mixed_pair_and_equals_form():
+    """Mixing equals-form and pair-form in the same list works — argparse
+    processes each token independently."""
+    args = [
+        "-s=compiler.cppstd=17",
+        "-o", "gdal/*:shared=True",
+        "-c=tools.build:jobs=4",
+    ]
+    assert _extra_arguments({"extra-arguments": args}) == args
+
+
 def test_extra_arguments_rejects_non_list():
     with pytest.raises(RuntimeError, match="must be a list of strings"):
         _extra_arguments({"extra-arguments": "-s=compiler.cppstd=17"})
