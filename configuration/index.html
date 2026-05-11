@@ -421,6 +421,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extra-conan-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extra Conan arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#entry-points-pep-621" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -625,6 +636,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extra-conan-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extra Conan arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#entry-points-pep-621" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -744,6 +766,12 @@
 <td>(none)</td>
 </tr>
 <tr>
+<td><code>extra-arguments</code></td>
+<td><code>[tool.conan-py-build]</code></td>
+<td>Extra Conan CLI flags appended to <code>conan build</code> and <code>conan export-pkg</code></td>
+<td><code>[]</code></td>
+</tr>
+<tr>
 <td><code>version.file</code></td>
 <td><code>[tool.conan-py-build.version]</code></td>
 <td>Python file with <code>__version__</code></td>
@@ -772,6 +800,9 @@
 <p>Variants for extra profiles: <code>extra-profile-host</code>,
 <code>extra-profile-build</code>, <code>extra-profile-all</code>.
 Paths relative to project root.</p>
+<p>For one-off Conan overrides without shipping a separate
+profile file, use <code>extra-arguments</code> (see <em>Extra Conan
+arguments</em> below).</p>
 <p>Default <code>packages</code> is <code>src/&lt;normalized_project_name&gt;</code>
 (hyphens → underscores).</p>
 <h2 id="dynamic-version">Dynamic version</h2>
@@ -863,6 +894,35 @@ Working examples for Linux, macOS and Windows live under
 or <code>CONAN_HOME</code> / <code>.conanrc</code>). Set
 <code>CONAN_PY_BUILD_PROFILE_AUTODETECT=1</code> to autodetect
 the profile instead of requiring <code>default</code>.</p>
+<h2 id="extra-conan-arguments">Extra Conan arguments</h2>
+<p>CLI flags appended to <code>conan build</code> and
+<code>conan export-pkg</code>. Symmetric with <code>extra-profile</code>,
+with higher precedence — CLI flags win against any
+profile entry.</p>
+<p>Bump <code>compiler.cppstd</code> to match a transitive dep
+(e.g. <code>gdal/3.12.1</code> requires C++17, MSVC defaults
+to 14):</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
+<span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;-s=compiler.cppstd=17&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>Disable an optional dep feature and pin parallelism:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
+<span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;-o=gdal/*:with_arrow=False&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;-c=tools.build:jobs=4&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<p>For values with embedded double quotes (dict / list
+<code>[conf]</code> literals), use TOML literal strings (<code>'...'</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;-c=tools.build:cflags+=[&quot;-O2&quot;, &quot;-fPIC&quot;]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;-c=tools.cmake.cmaketoolchain:extra_variables={&quot;FOO&quot;: &quot;bar&quot;}&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<p>Any Conan CLI flag works: <code>-s</code> / <code>-o</code> / <code>-c</code> (host),
+<code>-s:b</code> / <code>-o:b</code> / <code>-c:b</code> (build context),
+<code>--build=...</code>, <code>--lockfile=...</code>. Pair-form
+(<code>["-s", "compiler.cppstd=17"]</code>) is also accepted.</p>
 <h2 id="entry-points-pep-621">Entry points (PEP 621)</h2>
 <p><code>[project.scripts]</code>, <code>[project.gui-scripts]</code> and
 <code>[project.entry-points.*]</code> from <code>pyproject.toml</code> are
