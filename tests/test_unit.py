@@ -20,6 +20,7 @@ from conan_py_build.build import (
     _check_wheel_package_path,
     _get_wheel_packages,
     _create_dist_info,
+    _write_entry_points,
     _build_wheel_with_tags,
     _copy_license_files_from_paths,
     _validate_version_config,
@@ -356,6 +357,56 @@ def test_prepare_metadata_dynamic_version_from_file(tmp_path, monkeypatch):
     name = prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
     assert name == "myadder_pybind11-0.5.0.dist-info"
     assert "Version: 0.5.0" in (tmp_path / "meta" / name / "METADATA").read_text(encoding="utf-8")
+
+
+def test_write_entry_points_omits_file_when_no_entries(tmp_path):
+    dist_info = tmp_path / "pkg-1.0.0.dist-info"
+    dist_info.mkdir()
+    _write_entry_points(dist_info, {"name": "pkg", "version": "1.0.0"}, tmp_path)
+    assert not (dist_info / "entry_points.txt").exists()
+
+
+def test_write_entry_points_emits_all_section_kinds(tmp_path):
+    """scripts -> [console_scripts], gui-scripts -> [gui_scripts],
+    entry-points."group" -> [group], all coexisting in the same file."""
+    dist_info = tmp_path / "pkg-1.0.0.dist-info"
+    dist_info.mkdir()
+    metadata = {
+        "name": "pkg",
+        "version": "1.0.0",
+        "scripts": {"mytool": "pkg.cli:main"},
+        "gui-scripts": {"mygui": "pkg.gui:run"},
+        "entry-points": {"rasterio.rio_commands": {"info": "pkg.info:info"}},
+    }
+    _write_entry_points(dist_info, metadata, tmp_path)
+    content = (dist_info / "entry_points.txt").read_text(encoding="utf-8")
+    assert "[console_scripts]\nmytool = pkg.cli:main" in content
+    assert "[gui_scripts]\nmygui = pkg.gui:run" in content
+    assert "[rasterio.rio_commands]\ninfo = pkg.info:info" in content
+
+
+def test_write_entry_points_reserved_group_in_entry_points_raises(tmp_path):
+    """Reserved group ('console_scripts') under [project.entry-points] is forbidden by PEP 621."""
+    dist_info = tmp_path / "pkg-1.0.0.dist-info"
+    dist_info.mkdir()
+    metadata = {
+        "name": "pkg",
+        "version": "1.0.0",
+        "scripts": {"cli": "pkg.cli:main"},
+        "entry-points": {"console_scripts": {"other": "pkg.cli:other"}},
+    }
+    with pytest.raises(Exception):
+        _write_entry_points(dist_info, metadata, tmp_path)
+
+
+def test_create_dist_info_writes_entry_points_when_scripts_declared(tmp_path):
+    """End-to-end: _create_dist_info emits entry_points.txt alongside METADATA."""
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    metadata = {"name": "pkg", "version": "1.0.0", "scripts": {"mytool": "pkg.cli:main"}}
+    dist_info = _create_dist_info(staging, metadata, tmp_path)
+    assert (dist_info / "METADATA").is_file()
+    assert (dist_info / "entry_points.txt").is_file()
 
 
 def test_prepare_metadata_with_license_file(tmp_path, monkeypatch):

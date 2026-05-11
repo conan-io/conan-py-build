@@ -2,6 +2,15 @@
 
 Example of a Python package with C++ code using **pybind11**.
 
+Showcases PEP 621 features wired through the backend: dynamic
+`version`, PEP 639 license files, and a [`project.scripts`][ep]
+entry that installs the `myadder` CLI as a real executable.
+Custom plugin-discovery groups (`[project.entry-points."…"]`)
+are also supported — see the
+[backend docs](https://conan-py-build.conan.io/configuration/).
+
+[ep]: https://packaging.python.org/en/latest/specifications/entry-points/
+
 ## Build and Install
 
 ```bash
@@ -24,6 +33,11 @@ pip install dist/myadder_pybind11-*.whl
 
 # Test it
 python -c "import myadder_pybind11; print(myadder_pybind11.add(2, 3)); print(myadder_pybind11.add_integers(10, 20)); print(myadder_pybind11.greet('World'))"
+
+# Console script installed automatically via [project.scripts]
+myadder add 2 3
+myadder add-int 10 20
+myadder greet World
 
 # Uninstall when done
 pip uninstall myadder-pybind11 -y

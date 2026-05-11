@@ -304,6 +304,37 @@ def _write_metadata_file(dist_info_dir: Path, metadata: dict, project_dir: Path)
         f.write(content)
 
 
+def _write_entry_points(dist_info_dir: Path, metadata: dict, project_dir: Path) -> None:
+    """Write entry_points.txt per PEP 621 / PyPA entry-points spec; skip if empty."""
+    std = _get_standard_metadata(metadata, project_dir)
+    groups: dict = {}
+    if std.scripts:
+        groups["console_scripts"] = std.scripts
+    if std.gui_scripts:
+        groups["gui_scripts"] = std.gui_scripts
+    for group, entries in (std.entrypoints or {}).items():
+        if not entries:
+            continue
+        if group in groups:
+            raise RuntimeError(
+                f"Entry point group {group!r} declared in both "
+                "[project.entry-points] and [project.scripts]/[project.gui-scripts]."
+            )
+        groups[group] = entries
+    if not groups:
+        return
+
+    lines = []
+    for group, entries in groups.items():
+        lines.append(f"[{group}]")
+        for name, target in entries.items():
+            lines.append(f"{name} = {target}")
+        lines.append("")
+
+    with (dist_info_dir / "entry_points.txt").open("w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines))
+
+
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
     """Create .dist-info directory with metadata files."""
     name = _normalize_name(metadata.get("name", "unknown"))
@@ -313,6 +344,7 @@ def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> P
     dist_info_dir.mkdir(parents=True, exist_ok=True)
 
     _write_metadata_file(dist_info_dir, metadata, project_dir)
+    _write_entry_points(dist_info_dir, metadata, project_dir)
 
     return dist_info_dir
 

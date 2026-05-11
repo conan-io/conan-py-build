@@ -10,6 +10,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.8"
 
+[project.scripts]
+myadder = "myadder_pybind11.cli:main"
+
 [tool.conan-py-build.version]
 file = "python/myadder_pybind11/__init__.py"
 

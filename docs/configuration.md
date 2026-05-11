@@ -119,6 +119,32 @@ or `CONAN_HOME` / `.conanrc`). Set
 `CONAN_PY_BUILD_PROFILE_AUTODETECT=1` to autodetect
 the profile instead of requiring `default`.
 
+## Entry points (PEP 621)
+
+`[project.scripts]`, `[project.gui-scripts]` and
+`[project.entry-points.*]` from `pyproject.toml` are
+written to `<pkg>.dist-info/entry_points.txt` in the
+wheel, per the PyPA
+[entry points specification](https://packaging.python.org/en/latest/specifications/entry-points/).
+Installers create the corresponding console/GUI
+wrappers at install time; runtime tools like
+`importlib.metadata.entry_points()` read them
+from this file.
+
+```toml
+[project.scripts]
+mycli = "mypackage.cli:main"
+
+[project.gui-scripts]
+mygui = "mypackage.gui:run"
+
+[project.entry-points."myplugin.hooks"]
+on_event = "mypackage.hooks:on_event"
+```
+
+The file is only written when at least one entry
+point is declared.
+
 ## License files (PEP 639)
 
 Set `license-files` in `[project]`
