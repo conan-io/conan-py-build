@@ -225,6 +225,23 @@ def _autodetect_profile() -> bool:
     return env_val in ("1", "true", "yes")
 
 
+def _extra_arguments(tool_cfg: dict) -> List[str]:
+    """Return ``[tool.conan-py-build].extra-arguments`` validated as ``list[str]``.
+
+    Appended verbatim to ``conan build`` and ``conan export-pkg`` invocations,
+    symmetric with ``extra-profile``. Typical uses: ``-s`` / ``-o`` / ``-c``
+    overrides, ``--lockfile``, ``--build=...``, per-context ``-s:b`` flags.
+    """
+    args = tool_cfg.get("extra-arguments")
+    if args is None:
+        return []
+    if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
+        raise RuntimeError(
+            "[tool.conan-py-build].extra-arguments must be a list of strings."
+        )
+    return args
+
+
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
     if host_profile != "default" and build_profile != "default":
         return host_profile, build_profile
@@ -525,6 +542,8 @@ def _do_build_wheel(
         arg = key[len("extra-"):].replace("-", ":", 1)  # profile-host -> profile:host
         profile_args.extend([f"--{arg}", str(p)])
 
+    extra_args = _extra_arguments(tool)
+
     conanfile_path = tool.get("conanfile-path") or "."
     resolved_conanfile = str(_resolve_conanfile_path(conanfile_path, source_dir))
 
@@ -549,6 +568,7 @@ def _do_build_wheel(
         "--build=missing",
     ]
     build_cmd.extend(profile_args)
+    build_cmd.extend(extra_args)
 
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
@@ -580,6 +600,7 @@ def _do_build_wheel(
         user_presets_conf,
     ]
     export_pkg_cmd.extend(profile_args)
+    export_pkg_cmd.extend(extra_args)
     try:
         export_result = conan_api.command.run(export_pkg_cmd)
     except Exception as e:
