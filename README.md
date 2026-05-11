@@ -15,7 +15,8 @@ pip install conan-py-build
 
 ## Quick start
 
-> [!NOTE] The steps below use CMake, but the backend is build-system agnostic —
+> [!NOTE]
+> The steps below use CMake, but the backend is build-system agnostic —
 > it works with anything Conan can drive. For a Meson version, see
 > [basic-meson-pybind11](examples/basic-meson-pybind11/).
 
