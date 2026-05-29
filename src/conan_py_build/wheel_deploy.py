@@ -58,33 +58,57 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
         shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
 
 
+def _collect_lib_dirs(deploy_dir: Path) -> list:
+    """Unique directories under deploy_dir that contain shared libraries."""
+    if not deploy_dir.is_dir():
+        return []
+    dirs: set = set()
+    for pattern in ("*.so", "*.so.*", "*.dylib", "*.dll"):
+        for lib in deploy_dir.rglob(pattern):
+            if lib.is_file() and not lib.is_symlink():
+                dirs.add(lib.parent)
+    return sorted(dirs)
+
+
 def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
-    """Set RPATH of extension modules to the absolute path of the deploy directory.
+    """Set RPATH of extension modules to point to every directory containing deployed shared libs.
 
     This makes the extensions point to the shared libs deployed by Conan so that
     auditwheel / delocate can find them, bundle them, and mangle their SONAMEs.
+    No-op when no shared libs were deployed (static-only builds).
     """
+    lib_dirs = _collect_lib_dirs(deploy_dir)
+    if not lib_dirs:
+        return
+
     if sys.platform == "darwin":
         patcher = _find_tool("install_name_tool")
-        make_args = lambda p: [patcher, "-add_rpath", str(deploy_dir), str(p)]
+        make_args = lambda p, d: [patcher, "-add_rpath", str(d), str(p)]
     elif sys.platform == "linux":
         patcher = _find_tool("patchelf")
-        make_args = lambda p: [patcher, "--set-rpath", str(deploy_dir), str(p)]
+        make_args = lambda p, d: [patcher, "--add-rpath", str(d), str(p)]
     else:
         return
 
     for path in staging_dir.rglob("*.so"):
-        if _is_python_extension_module(path):
+        if not _is_python_extension_module(path):
+            continue
+        for lib_dir in lib_dirs:
             try:
-                subprocess.run(make_args(path), check=True, capture_output=True, text=True)
+                subprocess.run(make_args(path, lib_dir), check=True, capture_output=True, text=True)
             except FileNotFoundError:
                 print(
                     f"WARNING: {patcher} not found. Install it so auditwheel can locate "
                     f"shared libs for {path.name}.",
                     flush=True,
                 )
-            except subprocess.CalledProcessError:
-                pass
+                break
+            except subprocess.CalledProcessError as e:
+                stderr = e.stderr.strip() if e.stderr else ""
+                print(
+                    f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
+                    flush=True,
+                )
 
 
 def patch_rpath(staging_dir: Path) -> None:

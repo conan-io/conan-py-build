@@ -152,6 +152,8 @@ def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
     ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "libfmt.so.12").write_bytes(b"lib")
 
     calls = []
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
@@ -161,7 +163,7 @@ def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
 
     rpath_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(rpath_calls) == 1
-    assert rpath_calls[0][1:] == ["--set-rpath", str(deploy_dir), str(pkg / ext)]
+    assert rpath_calls[0][1:] == ["--add-rpath", str(deploy_dir), str(pkg / ext)]
 
 
 def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
@@ -171,6 +173,8 @@ def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
     ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "libfmt.12.dylib").write_bytes(b"lib")
 
     calls = []
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
@@ -183,18 +187,61 @@ def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
     assert it_calls[0][1:] == ["-add_rpath", str(deploy_dir), str(pkg / ext)]
 
 
+def test_set_rpath_to_deploy_dir_no_op_when_empty(tmp_path, monkeypatch):
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_bytes(b"ext")
+    deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()  # exists but empty
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    set_rpath_to_deploy_dir(staging, deploy_dir)
+
+    assert not calls
+
+
+def test_set_rpath_to_deploy_dir_subdirectory(tmp_path, monkeypatch):
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_bytes(b"ext")
+    deploy_dir = tmp_path / ".conan-libs"
+    subdir = deploy_dir / "fmt" / "lib"
+    subdir.mkdir(parents=True)
+    (subdir / "libfmt.so.12").write_bytes(b"lib")
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    set_rpath_to_deploy_dir(staging, deploy_dir)
+
+    rpath_calls = [c for c in calls if "patchelf" in c[0]]
+    assert len(rpath_calls) == 1
+    assert rpath_calls[0][1:] == ["--add-rpath", str(subdir), str(pkg / ext)]
+
+
 def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
     ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
     (pkg / ext).write_bytes(b"ext")
+    deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "fmt.dll").write_bytes(b"lib")
 
     calls = []
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "win32")
 
-    set_rpath_to_deploy_dir(staging, tmp_path / ".conan-libs")
+    set_rpath_to_deploy_dir(staging, deploy_dir)
 
     assert not any("patchelf" in str(c) or "install_name_tool" in str(c) for c in calls)
 
