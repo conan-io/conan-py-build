@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import move_deploy_to_wheel, patch_rpath
+from conan_py_build.wheel_deploy import move_deploy_to_wheel, patch_rpath, set_rpath_to_deploy_dir
 
 from conan_py_build.build import (
     _parse_config,
@@ -140,9 +140,63 @@ def test_patch_rpath(tmp_path, monkeypatch):
     mod.parent.mkdir(parents=True)
     mod.write_text("ext")
     patch_rpath(tmp_path / "staging")
-    assert calls == [
-        ["patchelf", "--add-rpath", "$ORIGIN", str(mod)],
-    ]
+    patchelf_calls = [c for c in calls if "patchelf" in c[0]]
+    assert len(patchelf_calls) == 1
+    assert patchelf_calls[0][1:] == ["--add-rpath", "$ORIGIN", str(mod)]
+
+
+def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_bytes(b"ext")
+    deploy_dir = tmp_path / ".conan-libs"
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    set_rpath_to_deploy_dir(staging, deploy_dir)
+
+    rpath_calls = [c for c in calls if "patchelf" in c[0]]
+    assert len(rpath_calls) == 1
+    assert rpath_calls[0][1:] == ["--set-rpath", str(deploy_dir), str(pkg / ext)]
+
+
+def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_bytes(b"ext")
+    deploy_dir = tmp_path / ".conan-libs"
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    set_rpath_to_deploy_dir(staging, deploy_dir)
+
+    it_calls = [c for c in calls if "install_name_tool" in c[0]]
+    assert len(it_calls) == 1
+    assert it_calls[0][1:] == ["-add_rpath", str(deploy_dir), str(pkg / ext)]
+
+
+def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
+    staging = tmp_path / "staging"
+    pkg = staging / "mypkg"
+    pkg.mkdir(parents=True)
+    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    (pkg / ext).write_bytes(b"ext")
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    set_rpath_to_deploy_dir(staging, tmp_path / ".conan-libs")
+
+    assert not any("patchelf" in str(c) or "install_name_tool" in str(c) for c in calls)
 
 
 def test_move_deploy_to_wheel_copies_shared_libs_next_to_extension(tmp_path):

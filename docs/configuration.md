@@ -200,17 +200,27 @@ wheel `.dist-info/licenses/` and sdist PKG-INFO.
 ## Shared libraries
 
 If your extension links to Conan-provided shared
-libraries, the backend copies them next to the
-extension after the build and patches RPATH so they
-resolve at runtime:
+libraries, the backend deploys them to a `.conan-libs/`
+directory next to the wheel and sets the extension RPATH
+to point there. A wheel-repair tool must then be run to
+bundle and mangle the libraries into the final wheel:
 
-- **macOS** — adds `@loader_path` via `install_name_tool`
-- **Linux** — adds `$ORIGIN` via `patchelf`
-- **Windows** — no patching needed, DLLs placed
-  next to the `.pyd` are found automatically
+- **Linux** — [`auditwheel repair`](https://github.com/pypa/auditwheel)
+- **macOS** — [`delocate-wheel`](https://github.com/matthew-brett/delocate)
+- **Windows** — [`delvewheel repair`](https://github.com/adang1345/delvewheel)
 
-No configuration is needed: the backend detects shared
-libraries automatically from the Conan deploy output.
+[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs the
+right tool automatically on Linux and macOS. On Windows,
+`delvewheel` needs to know where the DLLs are — add this
+to your `pyproject.toml`:
+
+```toml
+[tool.cibuildwheel.windows]
+repair-wheel-command = "delvewheel repair --add-path {wheel}/../.conan-libs -w {dest_dir} {wheel}"
+```
+
+The `.conan-libs/` directory is a build artifact. It can
+be deleted after the repair step completes.
 
 ## Sdist defaults
 

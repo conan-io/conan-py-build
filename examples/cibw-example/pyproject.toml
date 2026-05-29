@@ -12,6 +12,9 @@ license = { text = "MIT" }
 [tool.conan-py-build.wheel]
 packages = ["src/myadder_pybind11"]
 
+[tool.conan-py-build]
+extra-arguments = ["-o=fmt/*:shared=True"]
+
 [tool.conan-py-build.sdist]
 exclude = ["README.md"]
 
@@ -29,8 +32,9 @@ manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
-# Skip delocate: we only link statically (fmt) and to libpython/system; no .dylib to bundle.
-repair-wheel-command = ""
+
+[tool.cibuildwheel.windows]
+repair-wheel-command = "delvewheel repair --add-path {wheel}/../.conan-libs -w {dest_dir} {wheel}"
 
 # CONAN_CPYTHON_VERSION for Conan profiles that use cpython-portable (e.g. macOS x86_64)
 [[tool.cibuildwheel.overrides]]

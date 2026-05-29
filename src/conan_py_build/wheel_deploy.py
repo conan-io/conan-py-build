@@ -7,13 +7,34 @@ import sys
 from pathlib import Path
 
 
+def _find_tool(name: str) -> str:
+    """Return the full path to *name* if found via PATH, else the bare name."""
+    return shutil.which(name) or name
+
+
 def _is_python_extension_module(path: Path) -> bool:
-    """True if *path* is a real file whose name matches ``EXTENSION_SUFFIXES``."""
+    """True if *path* is a real file that is a Python extension module."""
     if path.is_symlink():
         return False
-    return any(
-        path.name.endswith(suf) for suf in importlib.machinery.EXTENSION_SUFFIXES
-    )
+    # nm -D reads ELF dynamic symbols only; Mach-O has no separate dynamic symbol table.
+    if sys.platform != "darwin":
+        try:
+            result = subprocess.run(["nm", "-D", str(path)], capture_output=True)
+            if result.returncode == 0 and result.stdout:
+                return b"PyInit_" in result.stdout
+            # nm ran but returned nothing (stripped binary, not ELF, etc.) → fall through
+        except FileNotFoundError:
+            pass
+    # Fallback: filename heuristic.
+    name = path.name
+    for suf in importlib.machinery.EXTENSION_SUFFIXES:
+        if not name.endswith(suf):
+            continue
+        # Bare ".so" is ambiguous: Python extensions and plain shared-lib stubs both use it.
+        if suf == ".so" and name.startswith("lib"):
+            return False
+        return True
+    return False
 
 
 def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
@@ -37,15 +58,44 @@ def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
         shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
 
 
+def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
+    """Set RPATH of extension modules to the absolute path of the deploy directory.
+
+    This makes the extensions point to the shared libs deployed by Conan so that
+    auditwheel / delocate can find them, bundle them, and mangle their SONAMEs.
+    """
+    if sys.platform == "darwin":
+        patcher = _find_tool("install_name_tool")
+        make_args = lambda p: [patcher, "-add_rpath", str(deploy_dir), str(p)]
+    elif sys.platform == "linux":
+        patcher = _find_tool("patchelf")
+        make_args = lambda p: [patcher, "--set-rpath", str(deploy_dir), str(p)]
+    else:
+        return
+
+    for path in staging_dir.rglob("*.so"):
+        if _is_python_extension_module(path):
+            try:
+                subprocess.run(make_args(path), check=True, capture_output=True, text=True)
+            except FileNotFoundError:
+                print(
+                    f"WARNING: {patcher} not found. Install it so auditwheel can locate "
+                    f"shared libs for {path.name}.",
+                    flush=True,
+                )
+            except subprocess.CalledProcessError:
+                pass
+
+
 def patch_rpath(staging_dir: Path) -> None:
     """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` to extension ``.so`` files."""
     if sys.platform == "darwin":
         rpath = "@loader_path"
-        patcher = "install_name_tool"
+        patcher = _find_tool("install_name_tool")
         arguments = ["-add_rpath", rpath]
     elif sys.platform == "linux":
         rpath = "$ORIGIN"
-        patcher = "patchelf"
+        patcher = _find_tool("patchelf")
         arguments = ["--add-rpath", rpath]
     else:
         return
