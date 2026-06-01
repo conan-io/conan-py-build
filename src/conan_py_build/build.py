@@ -13,7 +13,7 @@ from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
 
-from conan_py_build.wheel_deploy import set_rpath_to_deploy_dir
+from conan_py_build.wheel_deploy import patch_rpath, set_rpath_to_deploy_dir
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
 from pyproject_metadata import StandardMetadata
@@ -616,6 +616,7 @@ def _do_build_wheel(
         dirs_exist_ok=True,
     )
 
+    patch_rpath(staging_dir)
     set_rpath_to_deploy_dir(staging_dir, runtime_deploy_dir)
 
     # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)
