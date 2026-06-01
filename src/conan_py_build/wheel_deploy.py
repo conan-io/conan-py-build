@@ -81,6 +81,15 @@ def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
     if not lib_dirs:
         return
 
+    print(
+        f"WARNING: Shared libraries found in {deploy_dir.name}/. "
+        "The wheel produced by the backend is an intermediate artifact and must be repaired "
+        "before installation or distribution. "
+        "Run auditwheel repair (Linux), delocate-wheel (macOS), or delvewheel repair (Windows) "
+        "to bundle the libraries into the wheel.",
+        flush=True,
+    )
+
     if sys.platform == "darwin":
         patcher = _find_tool("install_name_tool")
         make_args = lambda p, d: [patcher, "-add_rpath", str(d), str(p)]
