@@ -616,7 +616,10 @@ def _do_build_wheel(
         dirs_exist_ok=True,
     )
 
+    # Add $ORIGIN / @loader_path so any shared libs installed inside the wheel are found at runtime.
     patch_rpath(staging_dir)
+    # Add absolute RPATHs to .conan-libs/ so repair tools (auditwheel/delocate/delvewheel)
+    # can discover the Conan-deployed shared libs and bundle them into the repaired wheel.
     set_rpath_to_deploy_dir(staging_dir, runtime_deploy_dir)
 
     # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)

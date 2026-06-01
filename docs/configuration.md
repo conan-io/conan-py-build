@@ -199,28 +199,45 @@ wheel `.dist-info/licenses/` and sdist PKG-INFO.
 
 ## Shared libraries
 
-If your extension links to Conan-provided shared
-libraries, the backend deploys them to a `.conan-libs/`
-directory next to the wheel and sets the extension RPATH
-to point there. A wheel-repair tool must then be run to
-bundle and mangle the libraries into the final wheel:
+When your extension links to Conan-provided shared
+libraries, the backend:
+
+1. Deploys them to a `.conan-libs/` directory next to
+   the wheel.
+2. Patches the extension RPATH so that repair tools
+   can discover and bundle those libraries.
+
+> **Important:** when Conan shared libraries are
+> deployed, the wheel returned by `build_wheel()` is
+> **an intermediate artifact**. It is not suitable for
+> direct installation or distribution until repaired —
+> `pip install .` or `pip wheel .` without a subsequent
+> repair step will produce a wheel that contains an
+> absolute RPATH pointing to a temporary `.conan-libs/`
+> directory but does not contain the libraries themselves.
+
+Run the appropriate repair tool after building:
 
 - **Linux** — [`auditwheel repair`](https://github.com/pypa/auditwheel)
 - **macOS** — [`delocate-wheel`](https://github.com/matthew-brett/delocate)
 - **Windows** — [`delvewheel repair`](https://github.com/adang1345/delvewheel)
 
-[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs the
-right tool automatically on Linux and macOS. On Windows,
-`delvewheel` needs to know where the DLLs are — add this
-to your `pyproject.toml`:
+[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs
+the right tool automatically on Linux and macOS. On
+Windows, add this to your `pyproject.toml`:
 
 ```toml
 [tool.cibuildwheel.windows]
-repair-wheel-command = "delvewheel repair --add-path {wheel}/../.conan-libs -w {dest_dir} {wheel}"
+before-all = "pip install delvewheel"
+repair-wheel-command = 'delvewheel repair --add-path "{wheel}/../.conan-libs" -w "{dest_dir}" "{wheel}"'
 ```
 
-The `.conan-libs/` directory is a build artifact. It can
-be deleted after the repair step completes.
+The `.conan-libs/` directory is a build artifact and
+can be deleted after the repair step completes.
+
+Static-only builds are unaffected: when no Conan shared
+libraries are deployed the backend is a no-op and the
+wheel is self-contained.
 
 ## Sdist defaults
 
