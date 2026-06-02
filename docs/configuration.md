@@ -209,12 +209,14 @@ libraries, the backend:
 
 > **Important:** when Conan shared libraries are
 > deployed, the wheel returned by `build_wheel()` is
-> **an intermediate artifact**. It is not suitable for
-> direct installation or distribution until repaired —
-> `pip install .` or `pip wheel .` without a subsequent
-> repair step will produce a wheel that contains an
-> absolute RPATH pointing to a temporary `.conan-libs/`
-> directory but does not contain the libraries themselves.
+> **an intermediate artifact**. It contains an absolute
+> RPATH pointing to the `.conan-libs/` build directory
+> but does not bundle the libraries themselves.
+> Installing this wheel locally may appear to work as
+> long as `.conan-libs/` still exists on disk, but will
+> fail with `ImportError` on any other machine or after
+> the build directory is removed. Always run a repair
+> step before installing or distributing.
 
 Run the appropriate repair tool after building:
 
