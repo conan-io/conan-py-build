@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import patch_rpath, set_rpath_to_deploy_dir
+from conan_py_build.wheel_deploy import patch_rpath, set_rpath_to_deploy_dir, _get_rpaths_darwin, _patch_deployed_lib_rpaths
 
 from conan_py_build.build import (
     _parse_config,
@@ -161,7 +161,9 @@ def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
 
     set_rpath_to_deploy_dir(staging, deploy_dir)
 
-    rpath_calls = [c for c in calls if "patchelf" in c[0]]
+    # Filter for extension patching (--add-rpath with absolute deploy_dir path).
+    # _patch_deployed_lib_rpaths uses --set-rpath and is tested separately.
+    rpath_calls = [c for c in calls if "patchelf" in c[0] and "--add-rpath" in c]
     assert len(rpath_calls) == 1
     assert rpath_calls[0][1:] == ["--add-rpath", str(deploy_dir), str(pkg / ext)]
 
@@ -182,7 +184,9 @@ def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
 
     set_rpath_to_deploy_dir(staging, deploy_dir)
 
-    it_calls = [c for c in calls if "install_name_tool" in c[0]]
+    # Filter for extension patching: -add_rpath with the absolute deploy_dir path.
+    # _patch_deployed_lib_rpaths uses -add_rpath @loader_path and is tested separately.
+    it_calls = [c for c in calls if "install_name_tool" in c[0] and str(deploy_dir) in c]
     assert len(it_calls) == 1
     assert it_calls[0][1:] == ["-add_rpath", str(deploy_dir), str(pkg / ext)]
 
@@ -222,7 +226,7 @@ def test_set_rpath_to_deploy_dir_subdirectory(tmp_path, monkeypatch):
 
     set_rpath_to_deploy_dir(staging, deploy_dir)
 
-    rpath_calls = [c for c in calls if "patchelf" in c[0]]
+    rpath_calls = [c for c in calls if "patchelf" in c[0] and "--add-rpath" in c]
     assert len(rpath_calls) == 1
     assert rpath_calls[0][1:] == ["--add-rpath", str(subdir), str(pkg / ext)]
 
@@ -245,6 +249,118 @@ def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
 
     assert not any("patchelf" in str(c) or "install_name_tool" in str(c) for c in calls)
 
+
+def test_get_rpaths_darwin(tmp_path, monkeypatch):
+    lib = tmp_path / "libfoo.dylib"
+    lib.write_bytes(b"")
+    otool_output = (
+        "Load command 12\n"
+        "          cmd LC_RPATH\n"
+        "      cmdsize 48\n"
+        "         path /usr/.conan2/p/lib (offset 12)\n"
+        "Load command 13\n"
+        "          cmd LC_RPATH\n"
+        "      cmdsize 40\n"
+        "         path @loader_path (offset 12)\n"
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0, otool_output, ""),
+    )
+    assert _get_rpaths_darwin(lib) == ["/usr/.conan2/p/lib", "@loader_path"]
+
+
+def test_patch_deployed_lib_rpaths_darwin_flat(tmp_path, monkeypatch):
+    deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "libxslt.1.dylib").write_bytes(b"lib")
+    (deploy_dir / "libxml2.2.dylib").write_bytes(b"lib")
+
+    calls = []
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""),
+    )
+
+    from conan_py_build.wheel_deploy import _collect_lib_dirs
+    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+
+    it_calls = [c for c in calls if "install_name_tool" in c[0]]
+    # One invocation per lib; each should add @loader_path
+    assert len(it_calls) == 2
+    for c in it_calls:
+        assert "-add_rpath" in c
+        assert "@loader_path" in c
+
+
+def test_patch_deployed_lib_rpaths_linux_flat(tmp_path, monkeypatch):
+    deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "libxslt.so.1").write_bytes(b"lib")
+    (deploy_dir / "libxml2.so.2").write_bytes(b"lib")
+
+    calls = []
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
+    )
+
+    from conan_py_build.wheel_deploy import _collect_lib_dirs
+    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+
+    pe_calls = [c for c in calls if "patchelf" in c[0]]
+    assert len(pe_calls) == 2
+    for c in pe_calls:
+        assert "--set-rpath" in c
+        assert "$ORIGIN" in c
+
+
+def test_patch_deployed_lib_rpaths_subdirs(tmp_path, monkeypatch):
+    """Two packages in separate subdirs: each lib gets a relative RPATH to the other dir."""
+    deploy_dir = tmp_path / ".conan-libs"
+    dir_a = deploy_dir / "a"
+    dir_b = deploy_dir / "b"
+    dir_a.mkdir(parents=True)
+    dir_b.mkdir(parents=True)
+    (dir_a / "libxslt.so.1").write_bytes(b"lib")
+    (dir_b / "libxml2.so.2").write_bytes(b"lib")
+
+    calls = []
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
+    )
+
+    from conan_py_build.wheel_deploy import _collect_lib_dirs
+    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+
+    pe_calls = [c for c in calls if "patchelf" in c[0]]
+    assert len(pe_calls) == 2
+    rpaths = {c[-2] for c in pe_calls}  # the rpath string argument
+    # Each lib's rpath must contain both $ORIGIN (self dir) and a relative path to the other dir
+    assert all("$ORIGIN" in r for r in rpaths)
+    assert any("../b" in r for r in rpaths)
+    assert any("../a" in r for r in rpaths)
+
+
+def test_patch_deployed_lib_rpaths_no_op_on_windows(tmp_path, monkeypatch):
+    deploy_dir = tmp_path / ".conan-libs"
+    deploy_dir.mkdir()
+    (deploy_dir / "fmt.dll").write_bytes(b"lib")
+
+    calls = []
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
+    )
+
+    from conan_py_build.wheel_deploy import _collect_lib_dirs
+    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+    assert not calls
 
 
 def test_extra_arguments_empty_when_unset():

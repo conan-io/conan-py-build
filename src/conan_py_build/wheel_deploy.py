@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.machinery
+import os
 import shutil
 import subprocess
 import sys
@@ -37,8 +38,6 @@ def _is_python_extension_module(path: Path) -> bool:
     return False
 
 
-
-
 def _collect_lib_dirs(deploy_dir: Path) -> list:
     """Unique directories under deploy_dir that contain shared libraries."""
     if not deploy_dir.is_dir():
@@ -49,6 +48,78 @@ def _collect_lib_dirs(deploy_dir: Path) -> list:
             if lib.is_file() and not lib.is_symlink():
                 dirs.add(lib.parent)
     return sorted(dirs)
+
+
+def _get_rpaths_darwin(path: Path) -> list[str]:
+    """Return the LC_RPATH entries of a Mach-O binary."""
+    result = subprocess.run(["otool", "-l", str(path)], capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    rpaths: list[str] = []
+    in_rpath = False
+    for line in result.stdout.splitlines():
+        if "LC_RPATH" in line:
+            in_rpath = True
+        elif in_rpath:
+            stripped = line.strip()
+            if stripped.startswith("path "):
+                rpaths.append(stripped.split()[1])
+                in_rpath = False
+    return rpaths
+
+
+def _patch_deployed_lib_rpaths(lib_dirs: list) -> None:
+    """Replace Conan-cache RPATHs on deployed libs with loader-relative paths.
+
+    runtime_deploy copies libs preserving their original RPATHs (pointing to the
+    Conan package cache). When a repair tool processes a deployed lib transitively
+    it follows those cache RPATHs, finding a transitive dep at a different absolute
+    path than the extension's RPATH (pointing to deploy_dir) does. That basename
+    collision aborts delocate/auditwheel.
+
+    Fix: replace cache RPATHs with @loader_path/$ORIGIN entries so every deployed
+    lib resolves its own deps within deploy_dir, giving repair tools a single
+    consistent path for each library.
+    """
+    if sys.platform == "darwin":
+        patcher = _find_tool("install_name_tool")
+    elif sys.platform == "linux":
+        patcher = _find_tool("patchelf")
+    else:
+        return
+
+    for lib_dir in lib_dirs:
+        for lib in sorted(lib_dir.iterdir()):
+            if not lib.is_file() or lib.is_symlink():
+                continue
+            if _is_python_extension_module(lib):
+                continue
+
+            # Build loader-relative RPATHs from this lib's directory to every lib_dir.
+            new_rpaths = []
+            for target_dir in lib_dirs:
+                rel = os.path.relpath(target_dir, lib_dir)
+                if sys.platform == "darwin":
+                    new_rpaths.append("@loader_path" if rel == "." else f"@loader_path/{rel}")
+                else:
+                    new_rpaths.append("$ORIGIN" if rel == "." else f"$ORIGIN/{rel}")
+
+            if sys.platform == "darwin":
+                old_rpaths = _get_rpaths_darwin(lib)
+                cmd = [patcher]
+                for old in old_rpaths:
+                    if old not in new_rpaths:
+                        cmd += ["-delete_rpath", old]
+                for new in new_rpaths:
+                    if new not in old_rpaths:
+                        cmd += ["-add_rpath", new]
+                if len(cmd) > 1:
+                    subprocess.run(cmd + [str(lib)], check=False, capture_output=True, text=True)
+            else:
+                subprocess.run(
+                    [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
+                    check=False, capture_output=True, text=True,
+                )
 
 
 def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
@@ -69,6 +140,10 @@ def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
         "Local installs may work by accident while that directory exists.",
         flush=True,
     )
+
+    # Patch deployed libs first so repair tools find every transitive dep within
+    # deploy_dir rather than following the original Conan-cache RPATHs.
+    _patch_deployed_lib_rpaths(lib_dirs)
 
     if sys.platform == "darwin":
         patcher = _find_tool("install_name_tool")
