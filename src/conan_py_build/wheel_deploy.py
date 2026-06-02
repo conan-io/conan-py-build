@@ -37,25 +37,6 @@ def _is_python_extension_module(path: Path) -> bool:
     return False
 
 
-def _package_dirs_with_native_extensions(staging_dir: Path) -> set[Path]:
-    """Parent dirs of each Python extension module under *staging_dir*."""
-    package_dirs: set[Path] = set()
-    for pattern in ("*.so", "*.pyd"):
-        for path in staging_dir.rglob(pattern):
-            if not path.is_file():
-                continue
-            if _is_python_extension_module(path):
-                package_dirs.add(path.parent)
-    return package_dirs
-
-
-def move_deploy_to_wheel(deploy_folder: Path, staging_dir: Path) -> None:
-    """Merge ``runtime_deploy`` into each package dir that has a native extension."""
-    if not deploy_folder.is_dir() or not any(deploy_folder.iterdir()):
-        return
-
-    for pkg_dir in _package_dirs_with_native_extensions(staging_dir):
-        shutil.copytree(deploy_folder, pkg_dir, dirs_exist_ok=True)
 
 
 def _collect_lib_dirs(deploy_dir: Path) -> list:
@@ -133,7 +114,6 @@ def patch_rpath(staging_dir: Path) -> None:
     else:
         return
 
-    warned = False
     for path in staging_dir.rglob("*.so"):
         if _is_python_extension_module(path):
             try:
@@ -149,6 +129,5 @@ def patch_rpath(staging_dir: Path) -> None:
                     f"shared libs. Install {patcher} or run auditwheel repair on the wheel {path.name}.",
                     flush=True,
                 )
-                warned = True
             except subprocess.CalledProcessError:
                 pass

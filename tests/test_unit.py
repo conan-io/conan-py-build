@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import move_deploy_to_wheel, patch_rpath, set_rpath_to_deploy_dir
+from conan_py_build.wheel_deploy import patch_rpath, set_rpath_to_deploy_dir
 
 from conan_py_build.build import (
     _parse_config,
@@ -245,18 +245,6 @@ def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
 
     assert not any("patchelf" in str(c) or "install_name_tool" in str(c) for c in calls)
 
-
-def test_move_deploy_to_wheel_copies_shared_libs_next_to_extension(tmp_path):
-    deploy = tmp_path / "deploy"
-    deploy.mkdir()
-    (deploy / "libdep.so").write_text("so", encoding="utf-8")
-    staging = tmp_path / "staging"
-    pkg = staging / "mypkg"
-    pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
-    (pkg / ext).write_text("ext", encoding="utf-8")
-    move_deploy_to_wheel(deploy, staging)
-    assert (pkg / "libdep.so").read_text() == "so"
 
 
 def test_extra_arguments_empty_when_unset():
