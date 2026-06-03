@@ -1,16 +1,17 @@
 cmake_minimum_required(VERSION 3.15)
-project(myadder_cibw LANGUAGES CXX)
+project(myxslt_cibw LANGUAGES CXX)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
-find_package(fmt REQUIRED)
+find_package(LibXslt REQUIRED)
+find_package(LibXml2 REQUIRED)
 
-pybind11_add_module(_core src/myadder.cpp)
-target_link_libraries(_core PRIVATE pybind11::module fmt::fmt)
+pybind11_add_module(_core src/myxslt.cpp)
+target_link_libraries(_core PRIVATE pybind11::module LibXslt::LibXslt LibXml2::LibXml2)
 
 if(APPLE)
     set_target_properties(_core PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
 endif()
 
-install(TARGETS _core DESTINATION myadder_pybind11)
+install(TARGETS _core DESTINATION myxslt_cibw)

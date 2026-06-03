@@ -241,6 +241,39 @@ Static-only builds are unaffected: when no Conan shared
 libraries are deployed the backend is a no-op and the
 wheel is self-contained.
 
+### System libraries and ABI risk
+
+Each repair tool excludes libraries it considers part of the host system and
+does not bundle them into the wheel:
+
+- **auditwheel (Linux)** uses an explicit [allowlist of named
+  libraries](https://github.com/pypa/auditwheel/blob/main/src/auditwheel/policy/manylinux-policy.json)
+  guaranteed on manylinux systems (e.g. `libz.so.1`, `libstdc++.so.6`,
+  `libm.so.6`).
+- **delocate (macOS)** [excludes any
+  library](https://github.com/matthew-brett/delocate/blob/master/delocate/libsana.py#L36-L37)
+  whose install name starts with `/usr/lib/` or `/System/Library/` (e.g.
+  `/usr/lib/libz.dylib`).
+- **delvewheel (Windows)** maintains a [list of known Windows
+  DLLs](https://github.com/adang1345/delvewheel/blob/master/delvewheel/_dll_list.py)
+  (e.g. `kernel32.dll`, `user32.dll`) that are assumed present on all supported
+  Windows versions.
+
+When an excluded library is found in `.conan-libs/`, the repair tool skips it
+and the wheel loads it from the target system at runtime instead.
+
+This means that if you build against a Conan-provided version of a system
+library (e.g. `zlib/1.3.2` with `shared=True`), the wheel will silently use the
+system zlib at runtime. If the system version is older and lacks a symbol your
+code depends on, the import will fail with `undefined symbol`, a bug that passes
+repair tools undetected.
+
+If your code uses symbols that exist in the Conan-provided version but not in
+the system version on your target machines, the import will fail at runtime
+despite the wheel passing the repair step. Linking that library statically
+removes the dependency on the system version. You can inspect which symbols your
+code requires with `nm -D` (Linux/macOS) or `dumpbin /exports` (Windows).
+
 ## Sdist defaults
 
 Included: `pyproject.toml`, `conanfile.py`, your build
