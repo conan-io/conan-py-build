@@ -121,7 +121,7 @@ def _patch_deployed_lib_rpaths(lib_dirs: list) -> None:
                 )
 
 
-def _patch_extensions_for_repair(staging_dir: Path, deploy_dir: Path) -> None:
+def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
     """Set RPATH of extension modules to point to every directory containing deployed shared libs.
 
     This makes the extensions point to the shared libs deployed by Conan so that

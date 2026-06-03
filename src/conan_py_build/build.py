@@ -13,7 +13,7 @@ from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
 
-from conan_py_build.wheel_deploy import _patch_extension_origin_rpath, _patch_extensions_for_repair
+from conan_py_build.wheel_deploy import _patch_extension_origin_rpath, _set_deploy_rpath
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
 from pyproject_metadata import StandardMetadata
@@ -618,7 +618,7 @@ def _do_build_wheel(
 
     _patch_extension_origin_rpath(staging_dir)
     # Absolute RPATHs to .conan-libs/ let repair tools discover and bundle the deployed libs.
-    _patch_extensions_for_repair(staging_dir, runtime_deploy_dir)
+    _set_deploy_rpath(staging_dir, runtime_deploy_dir)
 
     # Create dist-info (or reuse the one prepared by prepare_metadata_for_build_wheel)
     if metadata_directory is not None:
