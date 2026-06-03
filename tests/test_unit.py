@@ -161,8 +161,6 @@ def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
 
     set_rpath_to_deploy_dir(staging, deploy_dir)
 
-    # Filter for extension patching (--add-rpath with absolute deploy_dir path).
-    # _patch_deployed_lib_rpaths uses --set-rpath and is tested separately.
     rpath_calls = [c for c in calls if "patchelf" in c[0] and "--add-rpath" in c]
     assert len(rpath_calls) == 1
     assert rpath_calls[0][1:] == ["--add-rpath", str(deploy_dir), str(pkg / ext)]
@@ -184,8 +182,6 @@ def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
 
     set_rpath_to_deploy_dir(staging, deploy_dir)
 
-    # Filter for extension patching: -add_rpath with the absolute deploy_dir path.
-    # _patch_deployed_lib_rpaths uses -add_rpath @loader_path and is tested separately.
     it_calls = [c for c in calls if "install_name_tool" in c[0] and str(deploy_dir) in c]
     assert len(it_calls) == 1
     assert it_calls[0][1:] == ["-add_rpath", str(deploy_dir), str(pkg / ext)]

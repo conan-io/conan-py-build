@@ -23,7 +23,6 @@ def _is_python_extension_module(path: Path) -> bool:
             result = subprocess.run(["nm", "-D", str(path)], capture_output=True)
             if result.returncode == 0 and result.stdout:
                 return b"PyInit_" in result.stdout
-            # nm ran but returned nothing (stripped binary, not ELF, etc.) → fall through
         except FileNotFoundError:
             pass
     # Fallback: filename heuristic.
