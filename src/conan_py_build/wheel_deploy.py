@@ -121,7 +121,7 @@ def _patch_deployed_lib_rpaths(lib_dirs: list) -> None:
                 )
 
 
-def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
+def _patch_extensions_for_repair(staging_dir: Path, deploy_dir: Path) -> None:
     """Set RPATH of extension modules to point to every directory containing deployed shared libs.
 
     This makes the extensions point to the shared libs deployed by Conan so that
@@ -174,7 +174,7 @@ def set_rpath_to_deploy_dir(staging_dir: Path, deploy_dir: Path) -> None:
                 )
 
 
-def patch_rpath(staging_dir: Path) -> None:
+def _patch_extension_origin_rpath(staging_dir: Path) -> None:
     """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` to extension ``.so`` files."""
     if sys.platform == "darwin":
         rpath = "@loader_path"

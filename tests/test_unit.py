@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import patch_rpath, set_rpath_to_deploy_dir, _get_rpaths_darwin, _patch_deployed_lib_rpaths
+from conan_py_build.wheel_deploy import _patch_extension_origin_rpath, _patch_extensions_for_repair, _get_rpaths_darwin, _patch_deployed_lib_rpaths
 
 from conan_py_build.build import (
     _parse_config,
@@ -127,7 +127,7 @@ build-backend = "conan_py_build.build"
         _resolve_version(meta, tmp_path)
 
 
-def test_patch_rpath(tmp_path, monkeypatch):
+def test__patch_extension_origin_rpath(tmp_path, monkeypatch):
     calls = []
 
     def fake_run(cmd, **kwargs):
@@ -139,13 +139,13 @@ def test_patch_rpath(tmp_path, monkeypatch):
     mod = tmp_path / "staging" / "pkg" / "mod.cpython-312-x86_64-linux-gnu.so"
     mod.parent.mkdir(parents=True)
     mod.write_text("ext")
-    patch_rpath(tmp_path / "staging")
+    _patch_extension_origin_rpath(tmp_path / "staging")
     patchelf_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(patchelf_calls) == 1
     assert patchelf_calls[0][1:] == ["--add-rpath", "$ORIGIN", str(mod)]
 
 
-def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
+def test_patch_extensions_for_repair_linux(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
@@ -159,14 +159,14 @@ def test_set_rpath_to_deploy_dir_linux(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "linux")
 
-    set_rpath_to_deploy_dir(staging, deploy_dir)
+    _patch_extensions_for_repair(staging, deploy_dir)
 
     rpath_calls = [c for c in calls if "patchelf" in c[0] and "--add-rpath" in c]
     assert len(rpath_calls) == 1
     assert rpath_calls[0][1:] == ["--add-rpath", str(deploy_dir), str(pkg / ext)]
 
 
-def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
+def test_patch_extensions_for_repair_darwin(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
@@ -180,14 +180,14 @@ def test_set_rpath_to_deploy_dir_darwin(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "darwin")
 
-    set_rpath_to_deploy_dir(staging, deploy_dir)
+    _patch_extensions_for_repair(staging, deploy_dir)
 
     it_calls = [c for c in calls if "install_name_tool" in c[0] and str(deploy_dir) in c]
     assert len(it_calls) == 1
     assert it_calls[0][1:] == ["-add_rpath", str(deploy_dir), str(pkg / ext)]
 
 
-def test_set_rpath_to_deploy_dir_no_op_when_empty(tmp_path, monkeypatch):
+def test_patch_extensions_for_repair_no_op_when_empty(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
@@ -200,12 +200,12 @@ def test_set_rpath_to_deploy_dir_no_op_when_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "linux")
 
-    set_rpath_to_deploy_dir(staging, deploy_dir)
+    _patch_extensions_for_repair(staging, deploy_dir)
 
     assert not calls
 
 
-def test_set_rpath_to_deploy_dir_subdirectory(tmp_path, monkeypatch):
+def test_patch_extensions_for_repair_subdirectory(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
@@ -220,14 +220,14 @@ def test_set_rpath_to_deploy_dir_subdirectory(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "linux")
 
-    set_rpath_to_deploy_dir(staging, deploy_dir)
+    _patch_extensions_for_repair(staging, deploy_dir)
 
     rpath_calls = [c for c in calls if "patchelf" in c[0] and "--add-rpath" in c]
     assert len(rpath_calls) == 1
     assert rpath_calls[0][1:] == ["--add-rpath", str(subdir), str(pkg / ext)]
 
 
-def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
+def test_patch_extensions_for_repair_no_op_on_windows(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
@@ -241,7 +241,7 @@ def test_set_rpath_to_deploy_dir_no_op_on_windows(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""))
     monkeypatch.setattr(sys, "platform", "win32")
 
-    set_rpath_to_deploy_dir(staging, deploy_dir)
+    _patch_extensions_for_repair(staging, deploy_dir)
 
     assert not any("patchelf" in str(c) or "install_name_tool" in str(c) for c in calls)
 
