@@ -37,11 +37,11 @@ def _is_python_extension_module(path: Path) -> bool:
     return False
 
 
-def _collect_lib_dirs(deploy_dir: Path) -> list:
+def _collect_lib_dirs(deploy_dir: Path) -> list[Path]:
     """Unique directories under deploy_dir that contain shared libraries."""
     if not deploy_dir.is_dir():
         return []
-    dirs: set = set()
+    dirs: set[Path] = set()
     for pattern in ("*.so", "*.so.*", "*.dylib", "*.dll"):
         for lib in deploy_dir.rglob(pattern):
             if lib.is_file() and not lib.is_symlink():
@@ -67,7 +67,7 @@ def _get_rpaths_darwin(path: Path) -> list[str]:
     return rpaths
 
 
-def _patch_deployed_lib_rpaths(lib_dirs: list) -> None:
+def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
     """Replace Conan-cache RPATHs on deployed libs with loader-relative paths.
 
     runtime_deploy copies libs preserving their original RPATHs (pointing to the
@@ -105,15 +105,10 @@ def _patch_deployed_lib_rpaths(lib_dirs: list) -> None:
 
             if sys.platform == "darwin":
                 old_rpaths = _get_rpaths_darwin(lib)
-                cmd = [patcher]
-                for old in old_rpaths:
-                    if old not in new_rpaths:
-                        cmd += ["-delete_rpath", old]
-                for new in new_rpaths:
-                    if new not in old_rpaths:
-                        cmd += ["-add_rpath", new]
-                if len(cmd) > 1:
-                    subprocess.run(cmd + [str(lib)], check=False, capture_output=True, text=True)
+                deletes = [arg for old in old_rpaths if old not in new_rpaths for arg in ("-delete_rpath", old)]
+                adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
+                if deletes or adds:
+                    subprocess.run([patcher, *deletes, *adds, str(lib)], check=False, capture_output=True, text=True)
             else:
                 subprocess.run(
                     [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
@@ -146,44 +141,46 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
 
     if sys.platform == "darwin":
         patcher = _find_tool("install_name_tool")
-        make_args = lambda p, d: [patcher, "-add_rpath", str(d), str(p)]
+        rpath_flag = "-add_rpath"
     elif sys.platform == "linux":
         patcher = _find_tool("patchelf")
-        make_args = lambda p, d: [patcher, "--add-rpath", str(d), str(p)]
+        rpath_flag = "--add-rpath"
     else:
         return
 
     for path in staging_dir.rglob("*.so"):
         if not _is_python_extension_module(path):
             continue
-        for lib_dir in lib_dirs:
-            try:
-                subprocess.run(make_args(path, lib_dir), check=True, capture_output=True, text=True)
-            except FileNotFoundError:
-                print(
-                    f"WARNING: {patcher} not found. Install it so auditwheel can locate "
-                    f"shared libs for {path.name}.",
-                    flush=True,
-                )
-                break
-            except subprocess.CalledProcessError as e:
-                stderr = e.stderr.strip() if e.stderr else ""
-                print(
-                    f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
-                    flush=True,
-                )
+        _add_rpath_entries(path, lib_dirs, patcher, rpath_flag)
+
+
+def _add_rpath_entries(path: Path, lib_dirs: list[Path], patcher: str, rpath_flag: str) -> None:
+    for lib_dir in lib_dirs:
+        try:
+            subprocess.run([patcher, rpath_flag, str(lib_dir), str(path)], check=True, capture_output=True, text=True)
+        except FileNotFoundError:
+            print(
+                f"WARNING: {patcher} not found. Install it so auditwheel can locate "
+                f"shared libs for {path.name}.",
+                flush=True,
+            )
+            return
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr.strip() if e.stderr else ""
+            print(
+                f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
+                flush=True,
+            )
 
 
 def _patch_extension_origin_rpath(staging_dir: Path) -> None:
     """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` to extension ``.so`` files."""
     if sys.platform == "darwin":
-        rpath = "@loader_path"
         patcher = _find_tool("install_name_tool")
-        arguments = ["-add_rpath", rpath]
+        arguments = ["-add_rpath", "@loader_path"]
     elif sys.platform == "linux":
-        rpath = "$ORIGIN"
         patcher = _find_tool("patchelf")
-        arguments = ["--add-rpath", rpath]
+        arguments = ["--add-rpath", "$ORIGIN"]
     else:
         return
 
