@@ -199,23 +199,18 @@ wheel `.dist-info/licenses/` and sdist PKG-INFO.
 
 ## Shared libraries
 
-When your extension links to Conan-provided shared
-libraries, the backend:
+When your extension links to Conan-provided shared libraries, the backend:
 
-1. Deploys them to a `.conan-libs/` directory next to
-   the wheel.
-2. Patches the extension RPATH so that repair tools
-   can discover and bundle those libraries.
+1. Deploys them to a `.conan-libs/` directory next to the wheel.
+2. Patches the extension RPATH so that repair tools can discover and bundle
+   those libraries.
 
-> **Important:** when Conan shared libraries are
-> deployed, the wheel returned by `build_wheel()` is
-> **an intermediate artifact**. It contains an absolute
-> RPATH pointing to the `.conan-libs/` build directory
-> but does not bundle the libraries themselves.
-> Installing this wheel locally may appear to work as
-> long as `.conan-libs/` still exists on disk, but will
-> fail with `ImportError` on any other machine or after
-> the build directory is removed. Always run a repair
+> **Important:** when Conan shared libraries are deployed, the wheel returned by
+> `build_wheel()` is **an intermediate artifact**. It contains an absolute RPATH
+> pointing to the `.conan-libs/` build directory but does not bundle the
+> libraries themselves. Installing this wheel locally may appear to work as long
+> as `.conan-libs/` still exists on disk, but will fail with `ImportError` on
+> any other machine or after the build directory is removed. Always run a repair
 > step before installing or distributing.
 
 Run the appropriate repair tool after building:
@@ -224,9 +219,8 @@ Run the appropriate repair tool after building:
 - **macOS** — [`delocate-wheel`](https://github.com/matthew-brett/delocate)
 - **Windows** — [`delvewheel repair`](https://github.com/adang1345/delvewheel)
 
-[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs
-the right tool automatically on Linux and macOS. On
-Windows, add this to your `pyproject.toml`:
+[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs the right tool
+automatically on Linux and macOS. On Windows, add this to your `pyproject.toml`:
 
 ```toml
 [tool.cibuildwheel.windows]
@@ -234,12 +228,11 @@ before-all = "pip install delvewheel"
 repair-wheel-command = 'delvewheel repair --add-path "{wheel}/../.conan-libs" -w "{dest_dir}" "{wheel}"'
 ```
 
-The `.conan-libs/` directory is a build artifact and
-can be deleted after the repair step completes.
+The `.conan-libs/` directory is a build artifact and can be deleted after the
+repair step completes.
 
-Static-only builds are unaffected: when no Conan shared
-libraries are deployed the backend is a no-op and the
-wheel is self-contained.
+Static-only builds are unaffected: when no Conan shared libraries are deployed
+the backend is a no-op and the wheel is self-contained.
 
 ### System libraries and ABI risk
 
