@@ -12,13 +12,12 @@ license = { text = "MIT" }
 [tool.conan-py-build.wheel]
 packages = ["src/myxslt_cibw"]
 
-# libxslt and libxml2 are shared: the repair tool bundles them into the wheel.
-# zlib is a transitive dep of libxml2 and stays static (Conan default) so the
-# wheel does not depend on the system zlib version at runtime.
+# Set all deps to shared, then pin zlib back to static so the wheel does not
+# depend on the system zlib at runtime.
 [tool.conan-py-build]
 extra-arguments = [
-    "-o=libxslt/*:shared=True",
-    "-o=libxml2/*:shared=True",
+    "-o=*:shared=True",
+    "-o=zlib/*:shared=False",
 ]
 
 [tool.conan-py-build.sdist]
