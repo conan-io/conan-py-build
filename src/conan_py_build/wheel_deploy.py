@@ -1,36 +1,9 @@
 from __future__ import annotations
 
-import importlib.machinery
 import os
-
 import subprocess
 import sys
 from pathlib import Path
-
-
-
-def _is_python_extension_module(path: Path) -> bool:
-    """True if *path* is a real file that is a Python extension module."""
-    if path.is_symlink():
-        return False
-    # nm -D reads ELF dynamic symbols only; Mach-O has no separate dynamic symbol table.
-    if sys.platform != "darwin":
-        try:
-            result = subprocess.run(["nm", "-D", str(path)], capture_output=True)
-            if result.returncode == 0 and result.stdout:
-                return b"PyInit_" in result.stdout
-        except FileNotFoundError:
-            pass
-    # Fallback: filename heuristic.
-    name = path.name
-    for suf in importlib.machinery.EXTENSION_SUFFIXES:
-        if not name.endswith(suf):
-            continue
-        # Bare ".so" is ambiguous: Python extensions and plain shared-lib stubs both use it.
-        if suf == ".so" and name.startswith("lib"):
-            return False
-        return True
-    return False
 
 
 def _collect_lib_dirs(deploy_dir: Path) -> list[Path]:
@@ -86,8 +59,6 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
     for lib_dir in lib_dirs:
         for lib in sorted(lib_dir.iterdir()):
             if not lib.is_file() or lib.is_symlink():
-                continue
-            if _is_python_extension_module(lib):
                 continue
 
             # Build loader-relative RPATHs from this lib's directory to every lib_dir.
@@ -161,7 +132,7 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
         return
 
     for path in staging_dir.rglob("*.so"):
-        if not _is_python_extension_module(path):
+        if not path.is_file() or path.is_symlink():
             continue
         _add_rpath_entries(path, lib_dirs, patcher, rpath_flag)
 
