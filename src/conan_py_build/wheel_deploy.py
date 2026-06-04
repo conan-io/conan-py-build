@@ -105,23 +105,21 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
     # Patch deployed libs first so repair tools find every transitive dep within
     # deploy_dir rather than following the original Conan-cache RPATHs.
     _patch_deployed_lib_rpaths(deployed_libs, lib_dirs)
+    _patch_staging_rpaths(staging_dir, lib_dirs)
 
+
+def _patch_staging_rpaths(staging_dir: Path, lib_dirs: list[Path]) -> None:
+    """Add deploy_dir RPATHs to wheel libs so auditwheel/delocate can find deployed shared libs."""
     if sys.platform == "darwin":
-        patcher = "install_name_tool"
-        rpath_flag = "-add_rpath"
+        patcher, rpath_flag = "install_name_tool", "-add_rpath"
     elif sys.platform == "linux":
-        patcher = "patchelf"
-        rpath_flag = "--add-rpath"
+        patcher, rpath_flag = "patchelf", "--add-rpath"
     else:
         return
 
     staging_libs, _ = _collect_shared_libs(staging_dir)
     for path in staging_libs:
-        _add_rpath_entries(path, lib_dirs, patcher, rpath_flag)
-
-
-def _add_rpath_entries(path: Path, lib_dirs: list[Path], patcher: str, rpath_flag: str) -> None:
-    for lib_dir in lib_dirs:
-        _run_tool([patcher, rpath_flag, str(lib_dir), str(path)], path.name)
+        for lib_dir in lib_dirs:
+            _run_tool([patcher, rpath_flag, str(lib_dir), str(path)], path.name)
 
 
