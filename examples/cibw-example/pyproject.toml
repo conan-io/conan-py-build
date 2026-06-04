@@ -16,7 +16,8 @@ packages = ["src/myxslt_cibw"]
 # depend on the system zlib at runtime.
 [tool.conan-py-build]
 extra-arguments = [
-    "-o=!zlib/*:shared=True",
+    "-o=libxslt/*:shared=True",
+    "-o=libxml2/*:shared=True",
 ]
 
 [tool.conan-py-build.sdist]
