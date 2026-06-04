@@ -47,7 +47,7 @@ def _get_rpaths_darwin(path: Path) -> list[str]:
     return rpaths
 
 
-def _patch_deployed_lib_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
+def _patch_deployed_libs_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
     """Replace Conan-cache RPATHs on deployed libs with loader-relative paths.
 
     runtime_deploy copies libs preserving their original RPATHs (pointing to the
@@ -104,7 +104,7 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
 
     # Patch deployed libs first so repair tools find every transitive dep within
     # deploy_dir rather than following the original Conan-cache RPATHs.
-    _patch_deployed_lib_rpaths(deployed_libs, lib_dirs)
+    _patch_deployed_libs_rpaths(deployed_libs, lib_dirs)
     _patch_staging_rpaths(staging_dir, lib_dirs)
 
 

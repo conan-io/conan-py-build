@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_lib_rpaths, _collect_shared_libs
+from conan_py_build.wheel_deploy import _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_libs_rpaths, _collect_shared_libs
 
 from conan_py_build.build import (
     _parse_config,
@@ -249,7 +249,7 @@ def test_get_rpaths_darwin(tmp_path, monkeypatch):
     assert _get_rpaths_darwin(lib) == ["/usr/.conan2/p/lib", "@loader_path"]
 
 
-def test_patch_deployed_lib_rpaths_darwin_flat(tmp_path, monkeypatch):
+def test_patch_deployed_libs_rpaths_darwin_flat(tmp_path, monkeypatch):
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
     (deploy_dir / "libxslt.1.dylib").write_bytes(b"lib")
@@ -262,7 +262,7 @@ def test_patch_deployed_lib_rpaths_darwin_flat(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""),
     )
 
-    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
+    _patch_deployed_libs_rpaths(*_collect_shared_libs(deploy_dir))
 
     it_calls = [c for c in calls if "install_name_tool" in c[0]]
     # One invocation per lib; each should add @loader_path
@@ -272,7 +272,7 @@ def test_patch_deployed_lib_rpaths_darwin_flat(tmp_path, monkeypatch):
         assert "@loader_path" in c
 
 
-def test_patch_deployed_lib_rpaths_linux_flat(tmp_path, monkeypatch):
+def test_patch_deployed_libs_rpaths_linux_flat(tmp_path, monkeypatch):
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
     (deploy_dir / "libxslt.so.1").write_bytes(b"lib")
@@ -285,7 +285,7 @@ def test_patch_deployed_lib_rpaths_linux_flat(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
+    _patch_deployed_libs_rpaths(*_collect_shared_libs(deploy_dir))
 
     pe_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(pe_calls) == 2
@@ -294,7 +294,7 @@ def test_patch_deployed_lib_rpaths_linux_flat(tmp_path, monkeypatch):
         assert "$ORIGIN" in c
 
 
-def test_patch_deployed_lib_rpaths_subdirs(tmp_path, monkeypatch):
+def test_patch_deployed_libs_rpaths_subdirs(tmp_path, monkeypatch):
     """Two packages in separate subdirs: each lib gets a relative RPATH to the other dir."""
     deploy_dir = tmp_path / ".conan-libs"
     dir_a = deploy_dir / "a"
@@ -311,7 +311,7 @@ def test_patch_deployed_lib_rpaths_subdirs(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
+    _patch_deployed_libs_rpaths(*_collect_shared_libs(deploy_dir))
 
     pe_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(pe_calls) == 2
@@ -322,7 +322,7 @@ def test_patch_deployed_lib_rpaths_subdirs(tmp_path, monkeypatch):
     assert any("../a" in r for r in rpaths)
 
 
-def test_patch_deployed_lib_rpaths_no_op_on_windows(tmp_path, monkeypatch):
+def test_patch_deployed_libs_rpaths_no_op_on_windows(tmp_path, monkeypatch):
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
     (deploy_dir / "fmt.dll").write_bytes(b"lib")
@@ -334,7 +334,7 @@ def test_patch_deployed_lib_rpaths_no_op_on_windows(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
+    _patch_deployed_libs_rpaths(*_collect_shared_libs(deploy_dir))
     assert not calls
 
 
