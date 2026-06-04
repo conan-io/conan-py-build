@@ -1,5 +1,4 @@
 """Unit tests for the conan_py_build build backend."""
-import importlib.machinery
 import subprocess
 import sys
 from pathlib import Path
@@ -132,7 +131,7 @@ def test_set_deploy_rpath_linux(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    ext = "myext.so"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
@@ -153,7 +152,7 @@ def test_set_deploy_rpath_darwin(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    ext = "myext.so"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
@@ -174,7 +173,7 @@ def test_set_deploy_rpath_no_op_when_empty(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    ext = "myext.so"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()  # exists but empty
@@ -192,7 +191,7 @@ def test_set_deploy_rpath_subdirectory(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    ext = "myext.so"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
     subdir = deploy_dir / "fmt" / "lib"
@@ -214,7 +213,7 @@ def test_set_deploy_rpath_no_op_on_windows(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     pkg = staging / "mypkg"
     pkg.mkdir(parents=True)
-    ext = f"_core{importlib.machinery.EXTENSION_SUFFIXES[0]}"
+    ext = "myext.so"
     (pkg / ext).write_bytes(b"ext")
     deploy_dir = tmp_path / ".conan-libs"
     deploy_dir.mkdir()
