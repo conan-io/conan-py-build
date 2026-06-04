@@ -213,5 +213,9 @@ def _patch_extension_origin_rpath(staging_dir: Path) -> None:
                     f"shared libs. Install {patcher} or run auditwheel repair on the wheel {path.name}.",
                     flush=True,
                 )
-            except subprocess.CalledProcessError:
-                pass
+            except subprocess.CalledProcessError as e:
+                stderr = e.stderr.strip() if e.stderr else ""
+                print(
+                    f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
+                    flush=True,
+                )
