@@ -187,35 +187,3 @@ def _add_rpath_entries(path: Path, lib_dirs: list[Path], patcher: str, rpath_fla
             )
 
 
-def _patch_extension_origin_rpath(staging_dir: Path) -> None:
-    """macOS/Linux: add ``@loader_path`` / ``$ORIGIN`` to extension ``.so`` files."""
-    if sys.platform == "darwin":
-        patcher = _find_tool("install_name_tool")
-        arguments = ["-add_rpath", "@loader_path"]
-    elif sys.platform == "linux":
-        patcher = _find_tool("patchelf")
-        arguments = ["--add-rpath", "$ORIGIN"]
-    else:
-        return
-
-    for path in staging_dir.rglob("*.so"):
-        if _is_python_extension_module(path):
-            try:
-                subprocess.run(
-                    [patcher, *arguments, str(path)],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-            except FileNotFoundError:
-                print(
-                    f"WARNING: {patcher} not found. Python extension {path.name} may not load "
-                    f"shared libs. Install {patcher} or run auditwheel repair on the wheel {path.name}.",
-                    flush=True,
-                )
-            except subprocess.CalledProcessError as e:
-                stderr = e.stderr.strip() if e.stderr else ""
-                print(
-                    f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
-                    flush=True,
-                )

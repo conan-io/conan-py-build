@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import _patch_extension_origin_rpath, _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_lib_rpaths
+from conan_py_build.wheel_deploy import _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_lib_rpaths
 
 from conan_py_build.build import (
     _parse_config,
@@ -126,23 +126,6 @@ build-backend = "conan_py_build.build"
     with pytest.raises(RuntimeError, match="must define 'file' or 'provider'"):
         _resolve_version(meta, tmp_path)
 
-
-def test__patch_extension_origin_rpath(tmp_path, monkeypatch):
-    calls = []
-
-    def fake_run(cmd, **kwargs):
-        calls.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0, b"", b"")
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(sys, "platform", "linux")
-    mod = tmp_path / "staging" / "pkg" / "mod.cpython-312-x86_64-linux-gnu.so"
-    mod.parent.mkdir(parents=True)
-    mod.write_text("ext")
-    _patch_extension_origin_rpath(tmp_path / "staging")
-    patchelf_calls = [c for c in calls if "patchelf" in c[0]]
-    assert len(patchelf_calls) == 1
-    assert patchelf_calls[0][1:] == ["--add-rpath", "$ORIGIN", str(mod)]
 
 
 def test_set_deploy_rpath_linux(tmp_path, monkeypatch):
