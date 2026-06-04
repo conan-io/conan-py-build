@@ -6,16 +6,17 @@ import sys
 from pathlib import Path
 
 
-def _collect_lib_dirs(deploy_dir: Path) -> list[Path]:
-    """Unique directories under deploy_dir that contain shared libraries."""
+def _collect_shared_libs(deploy_dir: Path) -> tuple[list[Path], list[Path]]:
+    """Return (libs, lib_dirs) for all shared libraries under deploy_dir."""
     if not deploy_dir.is_dir():
-        return []
-    dirs: set[Path] = set()
+        return [], []
+    libs: set[Path] = set()
     for pattern in ("*.so", "*.so.*", "*.dylib", "*.dll"):
         for lib in deploy_dir.rglob(pattern):
             if lib.is_file() and not lib.is_symlink():
-                dirs.add(lib.parent)
-    return sorted(dirs)
+                libs.add(lib)
+    sorted_libs = sorted(libs)
+    return sorted_libs, sorted({lib.parent for lib in sorted_libs})
 
 
 def _get_rpaths_darwin(path: Path) -> list[str]:
@@ -36,7 +37,7 @@ def _get_rpaths_darwin(path: Path) -> list[str]:
     return rpaths
 
 
-def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
+def _patch_deployed_lib_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
     """Replace Conan-cache RPATHs on deployed libs with loader-relative paths.
 
     runtime_deploy copies libs preserving their original RPATHs (pointing to the
@@ -56,40 +57,23 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
     else:
         return
 
-    for lib_dir in lib_dirs:
-        for lib in sorted(lib_dir.iterdir()):
-            if not lib.is_file() or lib.is_symlink():
-                continue
-
-            # Build loader-relative RPATHs from this lib's directory to every lib_dir.
-            new_rpaths = []
-            for target_dir in lib_dirs:
-                rel = os.path.relpath(target_dir, lib_dir)
-                if sys.platform == "darwin":
-                    new_rpaths.append("@loader_path" if rel == "." else f"@loader_path/{rel}")
-                else:
-                    new_rpaths.append("$ORIGIN" if rel == "." else f"$ORIGIN/{rel}")
-
+    for lib in libs:
+        # Build loader-relative RPATHs from this lib's directory to every lib_dir.
+        new_rpaths = []
+        for target_dir in lib_dirs:
+            rel = os.path.relpath(target_dir, lib.parent)
             if sys.platform == "darwin":
-                old_rpaths = _get_rpaths_darwin(lib)
-                deletes = [arg for old in old_rpaths if old not in new_rpaths for arg in ("-delete_rpath", old)]
-                adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
-                if deletes or adds:
-                    try:
-                        result = subprocess.run([patcher, *deletes, *adds, str(lib)], capture_output=True, text=True)
-                        if result.returncode != 0 and result.stderr:
-                            print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
-                    except FileNotFoundError:
-                        raise RuntimeError(
-                            f"{patcher} not found. It is required to patch RPATHs on deployed "
-                            f"shared libraries. Install {patcher} and retry."
-                        )
+                new_rpaths.append("@loader_path" if rel == "." else f"@loader_path/{rel}")
             else:
+                new_rpaths.append("$ORIGIN" if rel == "." else f"$ORIGIN/{rel}")
+
+        if sys.platform == "darwin":
+            old_rpaths = _get_rpaths_darwin(lib)
+            deletes = [arg for old in old_rpaths if old not in new_rpaths for arg in ("-delete_rpath", old)]
+            adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
+            if deletes or adds:
                 try:
-                    result = subprocess.run(
-                        [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
-                        capture_output=True, text=True,
-                    )
+                    result = subprocess.run([patcher, *deletes, *adds, str(lib)], capture_output=True, text=True)
                     if result.returncode != 0 and result.stderr:
                         print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
                 except FileNotFoundError:
@@ -97,6 +81,19 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
                         f"{patcher} not found. It is required to patch RPATHs on deployed "
                         f"shared libraries. Install {patcher} and retry."
                     )
+        else:
+            try:
+                result = subprocess.run(
+                    [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
+                    capture_output=True, text=True,
+                )
+                if result.returncode != 0 and result.stderr:
+                    print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
+            except FileNotFoundError:
+                raise RuntimeError(
+                    f"{patcher} not found. It is required to patch RPATHs on deployed "
+                    f"shared libraries. Install {patcher} and retry."
+                )
 
 
 def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
@@ -106,8 +103,8 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
     auditwheel / delocate can find them, bundle them, and mangle their SONAMEs.
     No-op when no shared libs were deployed (static-only builds).
     """
-    lib_dirs = _collect_lib_dirs(deploy_dir)
-    if not lib_dirs:
+    deployed_libs, lib_dirs = _collect_shared_libs(deploy_dir)
+    if not deployed_libs:
         return
 
     print(
@@ -120,7 +117,7 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
 
     # Patch deployed libs first so repair tools find every transitive dep within
     # deploy_dir rather than following the original Conan-cache RPATHs.
-    _patch_deployed_lib_rpaths(lib_dirs)
+    _patch_deployed_lib_rpaths(deployed_libs, lib_dirs)
 
     if sys.platform == "darwin":
         patcher = "install_name_tool"
@@ -131,9 +128,8 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
     else:
         return
 
-    for path in staging_dir.rglob("*.so"):
-        if not path.is_file() or path.is_symlink():
-            continue
+    staging_libs, _ = _collect_shared_libs(staging_dir)
+    for path in staging_libs:
         _add_rpath_entries(path, lib_dirs, patcher, rpath_flag)
 
 

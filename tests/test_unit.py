@@ -8,7 +8,7 @@ import pytest
 
 from conan.errors import ConanException
 
-from conan_py_build.wheel_deploy import _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_lib_rpaths
+from conan_py_build.wheel_deploy import _set_deploy_rpath, _get_rpaths_darwin, _patch_deployed_lib_rpaths, _collect_shared_libs
 
 from conan_py_build.build import (
     _parse_config,
@@ -262,8 +262,7 @@ def test_patch_deployed_lib_rpaths_darwin_flat(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""),
     )
 
-    from conan_py_build.wheel_deploy import _collect_lib_dirs
-    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
 
     it_calls = [c for c in calls if "install_name_tool" in c[0]]
     # One invocation per lib; each should add @loader_path
@@ -286,8 +285,7 @@ def test_patch_deployed_lib_rpaths_linux_flat(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    from conan_py_build.wheel_deploy import _collect_lib_dirs
-    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
 
     pe_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(pe_calls) == 2
@@ -313,8 +311,7 @@ def test_patch_deployed_lib_rpaths_subdirs(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    from conan_py_build.wheel_deploy import _collect_lib_dirs
-    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
 
     pe_calls = [c for c in calls if "patchelf" in c[0]]
     assert len(pe_calls) == 2
@@ -337,8 +334,7 @@ def test_patch_deployed_lib_rpaths_no_op_on_windows(tmp_path, monkeypatch):
         lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, b"", b""),
     )
 
-    from conan_py_build.wheel_deploy import _collect_lib_dirs
-    _patch_deployed_lib_rpaths(_collect_lib_dirs(deploy_dir))
+    _patch_deployed_lib_rpaths(*_collect_shared_libs(deploy_dir))
     assert not calls
 
 
