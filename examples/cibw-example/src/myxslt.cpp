@@ -33,8 +33,6 @@ std::string transform(const std::string& xml_src, const std::string& xsl_src) {
     xmlFreeDoc(result);
     xsltFreeStylesheet(sheet);
     xmlFreeDoc(xml_doc);
-    xsltCleanupGlobals();
-    xmlCleanupParser();
     return out;
 }
 

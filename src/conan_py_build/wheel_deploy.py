@@ -113,8 +113,10 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
                         if result.returncode != 0 and result.stderr:
                             print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
                     except FileNotFoundError:
-                        print(f"WARNING: {patcher} not found. Deployed libs in {lib.parent.name}/ may have stale RPATHs.", flush=True)
-                        return
+                        raise RuntimeError(
+                            f"{patcher} not found. It is required to patch RPATHs on deployed "
+                            f"shared libraries. Install {patcher} and retry."
+                        )
             else:
                 try:
                     result = subprocess.run(
@@ -124,8 +126,10 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
                     if result.returncode != 0 and result.stderr:
                         print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
                 except FileNotFoundError:
-                    print(f"WARNING: {patcher} not found. Deployed libs in {lib.parent.name}/ may have stale RPATHs.", flush=True)
-                    return
+                    raise RuntimeError(
+                        f"{patcher} not found. It is required to patch RPATHs on deployed "
+                        f"shared libraries. Install {patcher} and retry."
+                    )
 
 
 def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
@@ -171,12 +175,10 @@ def _add_rpath_entries(path: Path, lib_dirs: list[Path], patcher: str, rpath_fla
         try:
             subprocess.run([patcher, rpath_flag, str(lib_dir), str(path)], check=True, capture_output=True, text=True)
         except FileNotFoundError:
-            print(
-                f"WARNING: {patcher} not found. Install it so auditwheel can locate "
-                f"shared libs for {path.name}.",
-                flush=True,
+            raise RuntimeError(
+                f"{patcher} not found. It is required to set RPATH on extension modules "
+                f"when shared libraries are deployed. Install {patcher} and retry."
             )
-            return
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.strip() if e.stderr else ""
             print(
