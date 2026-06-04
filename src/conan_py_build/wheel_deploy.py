@@ -19,6 +19,16 @@ def _collect_shared_libs(directory: Path) -> tuple[list[Path], list[Path]]:
     return sorted_libs, sorted({lib.parent for lib in sorted_libs})
 
 
+def _run_tool(cmd: list[str], lib_name: str) -> None:
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            print(f"WARNING: {cmd[0]} failed for {lib_name}" + (f": {stderr}" if stderr else ""), flush=True)
+    except FileNotFoundError:
+        raise RuntimeError(f"{cmd[0]} not found. Install it and retry.")
+
+
 def _get_rpaths_darwin(path: Path) -> list[str]:
     """Return the LC_RPATH entries of a Mach-O binary."""
     result = subprocess.run(["otool", "-l", str(path)], capture_output=True, text=True)
@@ -68,28 +78,9 @@ def _patch_deployed_lib_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
             deletes = [arg for old in old_rpaths if old not in new_rpaths for arg in ("-delete_rpath", old)]
             adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
             if deletes or adds:
-                try:
-                    result = subprocess.run(["install_name_tool", *deletes, *adds, str(lib)], capture_output=True, text=True)
-                    if result.returncode != 0 and result.stderr:
-                        print(f"WARNING: install_name_tool failed for {lib.name}: {result.stderr.strip()}", flush=True)
-                except FileNotFoundError:
-                    raise RuntimeError(
-                        "install_name_tool not found. It is required to patch RPATHs on deployed "
-                        "shared libraries. Install install_name_tool and retry."
-                    )
+                _run_tool(["install_name_tool", *deletes, *adds, str(lib)], lib.name)
         else:
-            try:
-                result = subprocess.run(
-                    ["patchelf", "--set-rpath", ":".join(new_rpaths), str(lib)],
-                    capture_output=True, text=True,
-                )
-                if result.returncode != 0 and result.stderr:
-                    print(f"WARNING: patchelf failed for {lib.name}: {result.stderr.strip()}", flush=True)
-            except FileNotFoundError:
-                raise RuntimeError(
-                    "patchelf not found. It is required to patch RPATHs on deployed "
-                    "shared libraries. Install patchelf and retry."
-                )
+            _run_tool(["patchelf", "--set-rpath", ":".join(new_rpaths), str(lib)], lib.name)
 
 
 def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
@@ -131,18 +122,6 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
 
 def _add_rpath_entries(path: Path, lib_dirs: list[Path], patcher: str, rpath_flag: str) -> None:
     for lib_dir in lib_dirs:
-        try:
-            subprocess.run([patcher, rpath_flag, str(lib_dir), str(path)], check=True, capture_output=True, text=True)
-        except FileNotFoundError:
-            raise RuntimeError(
-                f"{patcher} not found. It is required to set RPATH on extension modules "
-                f"when shared libraries are deployed. Install {patcher} and retry."
-            )
-        except subprocess.CalledProcessError as e:
-            stderr = e.stderr.strip() if e.stderr else ""
-            print(
-                f"WARNING: {patcher} failed for {path.name}" + (f": {stderr}" if stderr else ""),
-                flush=True,
-            )
+        _run_tool([patcher, rpath_flag, str(lib_dir), str(path)], path.name)
 
 
