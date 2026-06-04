@@ -29,7 +29,7 @@ build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 # (installed in CIBW_BEFORE_BUILD) instead of the one from PyPI. For normal use you can omit this.
 build-frontend = { name = "build", args = ["--no-isolation"] }
 skip = ["*-musllinux*", "*-manylinux_i686", "*-win32"]
-test-command = "python {project}/test_installed.py"
+test-command = "python {project}/examples/cibw-example/test_installed.py"
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
