@@ -50,11 +50,7 @@ def _patch_deployed_lib_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
     lib resolves its own deps within deploy_dir, giving repair tools a single
     consistent path for each library.
     """
-    if sys.platform == "darwin":
-        patcher = "install_name_tool"
-    elif sys.platform == "linux":
-        patcher = "patchelf"
-    else:
+    if sys.platform not in ("darwin", "linux"):
         return
 
     for lib in libs:
@@ -73,26 +69,26 @@ def _patch_deployed_lib_rpaths(libs: list[Path], lib_dirs: list[Path]) -> None:
             adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
             if deletes or adds:
                 try:
-                    result = subprocess.run([patcher, *deletes, *adds, str(lib)], capture_output=True, text=True)
+                    result = subprocess.run(["install_name_tool", *deletes, *adds, str(lib)], capture_output=True, text=True)
                     if result.returncode != 0 and result.stderr:
-                        print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
+                        print(f"WARNING: install_name_tool failed for {lib.name}: {result.stderr.strip()}", flush=True)
                 except FileNotFoundError:
                     raise RuntimeError(
-                        f"{patcher} not found. It is required to patch RPATHs on deployed "
-                        f"shared libraries. Install {patcher} and retry."
+                        "install_name_tool not found. It is required to patch RPATHs on deployed "
+                        "shared libraries. Install install_name_tool and retry."
                     )
         else:
             try:
                 result = subprocess.run(
-                    [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
+                    ["patchelf", "--set-rpath", ":".join(new_rpaths), str(lib)],
                     capture_output=True, text=True,
                 )
                 if result.returncode != 0 and result.stderr:
-                    print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
+                    print(f"WARNING: patchelf failed for {lib.name}: {result.stderr.strip()}", flush=True)
             except FileNotFoundError:
                 raise RuntimeError(
-                    f"{patcher} not found. It is required to patch RPATHs on deployed "
-                    f"shared libraries. Install {patcher} and retry."
+                    "patchelf not found. It is required to patch RPATHs on deployed "
+                    "shared libraries. Install patchelf and retry."
                 )
 
 
