@@ -6,13 +6,13 @@ import sys
 from pathlib import Path
 
 
-def _collect_shared_libs(deploy_dir: Path) -> tuple[list[Path], list[Path]]:
-    """Return (libs, lib_dirs) for all shared libraries under deploy_dir."""
-    if not deploy_dir.is_dir():
+def _collect_shared_libs(directory: Path) -> tuple[list[Path], list[Path]]:
+    """Return (libs, lib_dirs) for all shared libraries under directory."""
+    if not directory.is_dir():
         return [], []
     libs: set[Path] = set()
     for pattern in ("*.so", "*.so.*", "*.dylib", "*.dll"):
-        for lib in deploy_dir.rglob(pattern):
+        for lib in directory.rglob(pattern):
             if lib.is_file() and not lib.is_symlink():
                 libs.add(lib)
     sorted_libs = sorted(libs)
