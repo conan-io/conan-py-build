@@ -2,15 +2,11 @@ from __future__ import annotations
 
 import importlib.machinery
 import os
-import shutil
+
 import subprocess
 import sys
 from pathlib import Path
 
-
-def _find_tool(name: str) -> str:
-    """Return the full path to *name* if found via PATH, else the bare name."""
-    return shutil.which(name) or name
 
 
 def _is_python_extension_module(path: Path) -> bool:
@@ -81,9 +77,9 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
     consistent path for each library.
     """
     if sys.platform == "darwin":
-        patcher = _find_tool("install_name_tool")
+        patcher = "install_name_tool"
     elif sys.platform == "linux":
-        patcher = _find_tool("patchelf")
+        patcher = "patchelf"
     else:
         return
 
@@ -156,10 +152,10 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
     _patch_deployed_lib_rpaths(lib_dirs)
 
     if sys.platform == "darwin":
-        patcher = _find_tool("install_name_tool")
+        patcher = "install_name_tool"
         rpath_flag = "-add_rpath"
     elif sys.platform == "linux":
-        patcher = _find_tool("patchelf")
+        patcher = "patchelf"
         rpath_flag = "--add-rpath"
     else:
         return
