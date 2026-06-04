@@ -108,12 +108,24 @@ def _patch_deployed_lib_rpaths(lib_dirs: list[Path]) -> None:
                 deletes = [arg for old in old_rpaths if old not in new_rpaths for arg in ("-delete_rpath", old)]
                 adds = [arg for new in new_rpaths if new not in old_rpaths for arg in ("-add_rpath", new)]
                 if deletes or adds:
-                    subprocess.run([patcher, *deletes, *adds, str(lib)], check=False, capture_output=True, text=True)
+                    try:
+                        result = subprocess.run([patcher, *deletes, *adds, str(lib)], capture_output=True, text=True)
+                        if result.returncode != 0 and result.stderr:
+                            print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
+                    except FileNotFoundError:
+                        print(f"WARNING: {patcher} not found. Deployed libs in {lib.parent.name}/ may have stale RPATHs.", flush=True)
+                        return
             else:
-                subprocess.run(
-                    [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
-                    check=False, capture_output=True, text=True,
-                )
+                try:
+                    result = subprocess.run(
+                        [patcher, "--set-rpath", ":".join(new_rpaths), str(lib)],
+                        capture_output=True, text=True,
+                    )
+                    if result.returncode != 0 and result.stderr:
+                        print(f"WARNING: {patcher} failed for {lib.name}: {result.stderr.strip()}", flush=True)
+                except FileNotFoundError:
+                    print(f"WARNING: {patcher} not found. Deployed libs in {lib.parent.name}/ may have stale RPATHs.", flush=True)
+                    return
 
 
 def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
