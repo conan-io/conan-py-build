@@ -514,7 +514,7 @@ def _do_build_wheel(
 
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
 
-    runtime_deploy_dir = (wheel_dir / ".conan-libs").resolve()
+    runtime_deploy_dir = (source_dir / ".conan-libs").resolve()
     if runtime_deploy_dir.exists():
         shutil.rmtree(runtime_deploy_dir)
     runtime_deploy_dir.mkdir(parents=True)
