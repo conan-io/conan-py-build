@@ -3,14 +3,22 @@ requires = ["conan-py-build"]
 build-backend = "conan_py_build.build"
 
 [project]
-name = "myadder-cibw"
+name = "myxslt-cibw"
 version = "0.1.0"
-description = "Example: conan-py-build + cibuildwheel"
+description = "Example: conan-py-build + cibuildwheel with a shared-lib dep chain (libxslt→libxml2, zlib static)"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 
 [tool.conan-py-build.wheel]
-packages = ["src/myadder_pybind11"]
+packages = ["src/myxslt_cibw"]
+
+# Set all deps to shared, then pin zlib back to static so the wheel does not
+# depend on the system zlib at runtime.
+[tool.conan-py-build]
+extra-arguments = [
+    "-o=libxslt/*:shared=True",
+    "-o=libxml2/*:shared=True",
+]
 
 [tool.conan-py-build.sdist]
 exclude = ["README.md"]
@@ -21,7 +29,7 @@ build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 # (installed in CIBW_BEFORE_BUILD) instead of the one from PyPI. For normal use you can omit this.
 build-frontend = { name = "build", args = ["--no-isolation"] }
 skip = ["*-musllinux*", "*-manylinux_i686", "*-win32"]
-test-command = "python -c \"import myadder_pybind11; assert myadder_pybind11.add(2,3)==5.0; print('ok')\""
+test-command = "python {project}/examples/cibw-example/test_installed.py"
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
@@ -29,8 +37,13 @@ manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
-# Skip delocate: we only link statically (fmt) and to libpython/system; no .dylib to bundle.
-repair-wheel-command = ""
+repair-wheel-command = "MACOSX_DEPLOYMENT_TARGET=11.0 delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+
+[tool.cibuildwheel.windows]
+# before-all installs delvewheel in the runner environment where repair-wheel-command runs.
+# before-build would install it in the per-wheel build venv, which is not on the repair PATH.
+before-all = "pip install delvewheel"
+repair-wheel-command = 'delvewheel repair --add-path "{wheel}/../.conan-libs" -w "{dest_dir}" "{wheel}"'
 
 # CONAN_CPYTHON_VERSION for Conan profiles that use cpython-portable (e.g. macOS x86_64)
 [[tool.cibuildwheel.overrides]]

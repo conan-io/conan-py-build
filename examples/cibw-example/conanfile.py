@@ -2,8 +2,8 @@ from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
 
 
-class MyadderCibwConan(ConanFile):
-    name = "myadder-cibw"
+class MyXsltCibwConan(ConanFile):
+    name = "myxslt-cibw"
     version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
@@ -13,7 +13,7 @@ class MyadderCibwConan(ConanFile):
 
     def requirements(self):
         self.requires("pybind11/3.0.1")
-        self.requires("fmt/12.1.0")
+        self.requires("libxslt/1.1.42")  # pulls libxml2 -> zlib
 
     def build(self):
         cmake = CMake(self)
