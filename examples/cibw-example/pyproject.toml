@@ -43,7 +43,7 @@ repair-wheel-command = "MACOSX_DEPLOYMENT_TARGET=11.0 delocate-wheel --require-a
 # before-all installs delvewheel in the runner environment where repair-wheel-command runs.
 # before-build would install it in the per-wheel build venv, which is not on the repair PATH.
 before-all = "pip install delvewheel"
-repair-wheel-command = 'delvewheel repair --add-path "{project}/.conan-libs" -w "{dest_dir}" "{wheel}"'
+repair-wheel-command = 'python -c "import os,subprocess,sys; cwd=os.getcwd(); p=os.path.abspath(\".conan-libs\"); print(\"DEBUG CWD:\",cwd); print(\"DEBUG abspath:\",p); print(\"DEBUG exists:\",os.path.isdir(p)); print(\"DEBUG contents:\",os.listdir(p) if os.path.isdir(p) else []); subprocess.run([\"delvewheel\",\"repair\",\"--add-path\",p,\"-w\",sys.argv[1],sys.argv[2]],check=True)" "{dest_dir}" "{wheel}"'
 
 # CONAN_CPYTHON_VERSION for Conan profiles that use cpython-portable (e.g. macOS x86_64)
 [[tool.cibuildwheel.overrides]]
