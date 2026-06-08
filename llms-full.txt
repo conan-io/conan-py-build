@@ -366,18 +366,73 @@ wheel `.dist-info/licenses/` and sdist PKG-INFO.
 
 ## Shared libraries
 
-If your extension links to Conan-provided shared
-libraries, the backend copies them next to the
-extension after the build and patches RPATH so they
-resolve at runtime:
+When your extension links to Conan-provided shared libraries, the backend:
 
-- **macOS** — adds `@loader_path` via `install_name_tool`
-- **Linux** — adds `$ORIGIN` via `patchelf`
-- **Windows** — no patching needed, DLLs placed
-  next to the `.pyd` are found automatically
+1. Deploys them to a `.conan-libs/` directory next to the wheel.
+2. Patches the extension RPATH so that repair tools can discover and bundle
+   those libraries.
 
-No configuration is needed: the backend detects shared
-libraries automatically from the Conan deploy output.
+> **Important:** when Conan shared libraries are deployed, the wheel returned by
+> `build_wheel()` is **an intermediate artifact**. It contains an absolute RPATH
+> pointing to the `.conan-libs/` build directory but does not bundle the
+> libraries themselves. Installing this wheel locally may appear to work as long
+> as `.conan-libs/` still exists on disk, but will fail with `ImportError` on
+> any other machine or after the build directory is removed. Always run a repair
+> step before installing or distributing.
+
+Run the appropriate repair tool after building:
+
+- **Linux** — [`auditwheel repair`](https://github.com/pypa/auditwheel)
+- **macOS** — [`delocate-wheel`](https://github.com/matthew-brett/delocate)
+- **Windows** — [`delvewheel repair`](https://github.com/adang1345/delvewheel)
+
+[`cibuildwheel`](https://cibuildwheel.pypa.io/) runs the right tool
+automatically on Linux and macOS. On Windows, add this to your `pyproject.toml`:
+
+```toml
+[tool.cibuildwheel.windows]
+before-all = "pip install delvewheel"
+repair-wheel-command = 'delvewheel repair --add-path "{wheel}/../.conan-libs" -w "{dest_dir}" "{wheel}"'
+```
+
+The `.conan-libs/` directory is a build artifact and can be deleted after the
+repair step completes.
+
+Static-only builds are unaffected: when no Conan shared libraries are deployed
+the backend is a no-op and the wheel is self-contained.
+
+### System libraries and ABI risk
+
+Each repair tool excludes libraries it considers part of the host system and
+does not bundle them into the wheel:
+
+- **auditwheel (Linux)** uses an explicit [allowlist of named
+  libraries](https://github.com/pypa/auditwheel/blob/main/src/auditwheel/policy/manylinux-policy.json)
+  guaranteed on manylinux systems (e.g. `libz.so.1`, `libstdc++.so.6`,
+  `libm.so.6`).
+- **delocate (macOS)** [excludes any
+  library](https://github.com/matthew-brett/delocate/blob/master/delocate/libsana.py#L36-L37)
+  whose install name starts with `/usr/lib/` or `/System/Library/` (e.g.
+  `/usr/lib/libz.dylib`).
+- **delvewheel (Windows)** maintains a [list of known Windows
+  DLLs](https://github.com/adang1345/delvewheel/blob/master/delvewheel/_dll_list.py)
+  (e.g. `kernel32.dll`, `user32.dll`) that are assumed present on all supported
+  Windows versions.
+
+When an excluded library is found in `.conan-libs/`, the repair tool skips it
+and the wheel loads it from the target system at runtime instead.
+
+This means that if you build against a Conan-provided version of a system
+library (e.g. `zlib/1.3.2` with `shared=True`), the wheel will silently use the
+system zlib at runtime. If the system version is older and lacks a symbol your
+code depends on, the import will fail with `undefined symbol`, a bug that passes
+repair tools undetected.
+
+If your code uses symbols that exist in the Conan-provided version but not in
+the system version on your target machines, the import will fail at runtime
+despite the wheel passing the repair step. Linking that library statically
+removes the dependency on the system version. You can inspect which symbols your
+code requires with `nm -D` (Linux/macOS) or `dumpbin /exports` (Windows).
 
 ## Sdist defaults
 
@@ -408,7 +463,7 @@ Complete working projects under
 | [basic-meson-pybind11](https://github.com/conan-io/conan-py-build/tree/main/examples/basic-meson-pybind11) | pybind11 + `fmt` built with Meson |
 | [basic-nanobind](https://github.com/conan-io/conan-py-build/tree/main/examples/basic-nanobind) | nanobind + `fmt`, `extra-profile` for C++17 |
 | [external-sources](https://github.com/conan-io/conan-py-build/tree/main/examples/external-sources) | pybind11, C++ dependency fetched in `source()` |
-| [cibw-example](https://github.com/conan-io/conan-py-build/tree/main/examples/cibw-example) | pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/) cross-platform CI |
+| [cibw-example](https://github.com/conan-io/conan-py-build/tree/main/examples/cibw-example) | pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/), shared lib dep chain (libxslt→libxml2, zlib static) |
 
 ---
 

@@ -462,6 +462,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Shared libraries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-libraries-and-abi-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System libraries and ABI risk
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -676,6 +693,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Shared libraries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-libraries-and-abi-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System libraries and ABI risk
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -949,18 +983,66 @@ point is declared.</p>
 (e.g. <code>["LICENSE"]</code>) to include license files in the
 wheel <code>.dist-info/licenses/</code> and sdist PKG-INFO.</p>
 <h2 id="shared-libraries">Shared libraries</h2>
-<p>If your extension links to Conan-provided shared
-libraries, the backend copies them next to the
-extension after the build and patches RPATH so they
-resolve at runtime:</p>
+<p>When your extension links to Conan-provided shared libraries, the backend:</p>
+<ol>
+<li>Deploys them to a <code>.conan-libs/</code> directory next to the wheel.</li>
+<li>Patches the extension RPATH so that repair tools can discover and bundle
+   those libraries.</li>
+</ol>
+<blockquote>
+<p><strong>Important:</strong> when Conan shared libraries are deployed, the wheel returned by
+<code>build_wheel()</code> is <strong>an intermediate artifact</strong>. It contains an absolute RPATH
+pointing to the <code>.conan-libs/</code> build directory but does not bundle the
+libraries themselves. Installing this wheel locally may appear to work as long
+as <code>.conan-libs/</code> still exists on disk, but will fail with <code>ImportError</code> on
+any other machine or after the build directory is removed. Always run a repair
+step before installing or distributing.</p>
+</blockquote>
+<p>Run the appropriate repair tool after building:</p>
 <ul>
-<li><strong>macOS</strong> — adds <code>@loader_path</code> via <code>install_name_tool</code></li>
-<li><strong>Linux</strong> — adds <code>$ORIGIN</code> via <code>patchelf</code></li>
-<li><strong>Windows</strong> — no patching needed, DLLs placed
-  next to the <code>.pyd</code> are found automatically</li>
+<li><strong>Linux</strong> — <a href="https://github.com/pypa/auditwheel"><code>auditwheel repair</code></a></li>
+<li><strong>macOS</strong> — <a href="https://github.com/matthew-brett/delocate"><code>delocate-wheel</code></a></li>
+<li><strong>Windows</strong> — <a href="https://github.com/adang1345/delvewheel"><code>delvewheel repair</code></a></li>
 </ul>
-<p>No configuration is needed: the backend detects shared
-libraries automatically from the Conan deploy output.</p>
+<p><a href="https://cibuildwheel.pypa.io/"><code>cibuildwheel</code></a> runs the right tool
+automatically on Linux and macOS. On Windows, add this to your <code>pyproject.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.cibuildwheel.windows]</span>
+<span class="n">before-all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;pip install delvewheel&quot;</span>
+<span class="n">repair-wheel-command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;delvewheel repair --add-path &quot;{wheel}/../.conan-libs&quot; -w &quot;{dest_dir}&quot; &quot;{wheel}&quot;&#39;</span>
+</code></pre></div>
+<p>The <code>.conan-libs/</code> directory is a build artifact and can be deleted after the
+repair step completes.</p>
+<p>Static-only builds are unaffected: when no Conan shared libraries are deployed
+the backend is a no-op and the wheel is self-contained.</p>
+<h3 id="system-libraries-and-abi-risk">System libraries and ABI risk</h3>
+<p>Each repair tool excludes libraries it considers part of the host system and
+does not bundle them into the wheel:</p>
+<ul>
+<li><strong>auditwheel (Linux)</strong> uses an explicit <a href="https://github.com/pypa/auditwheel/blob/main/src/auditwheel/policy/manylinux-policy.json">allowlist of named
+  libraries</a>
+  guaranteed on manylinux systems (e.g. <code>libz.so.1</code>, <code>libstdc++.so.6</code>,
+  <code>libm.so.6</code>).</li>
+<li><strong>delocate (macOS)</strong> <a href="https://github.com/matthew-brett/delocate/blob/master/delocate/libsana.py#L36-L37">excludes any
+  library</a>
+  whose install name starts with <code>/usr/lib/</code> or <code>/System/Library/</code> (e.g.
+  <code>/usr/lib/libz.dylib</code>).</li>
+<li><strong>delvewheel (Windows)</strong> maintains a <a href="https://github.com/adang1345/delvewheel/blob/master/delvewheel/_dll_list.py">list of known Windows
+  DLLs</a>
+  (e.g. <code>kernel32.dll</code>, <code>user32.dll</code>) that are assumed present on all supported
+  Windows versions.</li>
+</ul>
+<p>When an excluded library is found in <code>.conan-libs/</code>, the repair tool skips it
+and the wheel loads it from the target system at runtime instead.</p>
+<p>This means that if you build against a Conan-provided version of a system
+library (e.g. <code>zlib/1.3.2</code> with <code>shared=True</code>), the wheel will silently use the
+system zlib at runtime. If the system version is older and lacks a symbol your
+code depends on, the import will fail with <code>undefined symbol</code>, a bug that passes
+repair tools undetected.</p>
+<p>If your code uses symbols that exist in the Conan-provided version but not in
+the system version on your target machines, the import will fail at runtime
+despite the wheel passing the repair step. Linking that library statically
+removes the dependency on the system version. You can inspect which symbols your
+code requires with <code>nm -D</code> (Linux/macOS) or <code>dumpbin /exports</code> (Windows).</p>
 <h2 id="sdist-defaults">Sdist defaults</h2>
 <p>Included: <code>pyproject.toml</code>, <code>conanfile.py</code>, your build
 system's top-level file (<code>CMakeLists.txt</code>,
