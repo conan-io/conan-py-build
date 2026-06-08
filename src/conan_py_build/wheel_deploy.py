@@ -95,7 +95,7 @@ def _set_deploy_rpath(staging_dir: Path, deploy_dir: Path) -> None:
         return
 
     print(
-        f"WARNING: Shared libraries deployed to {deploy_dir.name}/. "
+        f"WARNING: Shared libraries deployed to {deploy_dir}. "
         "This wheel is an intermediate artifact — run auditwheel repair (Linux), "
         "delocate-wheel (macOS), or delvewheel repair (Windows) before installing or distributing. "
         "Local installs may work by accident while that directory exists.",
