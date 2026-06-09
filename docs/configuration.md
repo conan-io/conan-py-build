@@ -225,7 +225,7 @@ automatically on Linux and macOS. On Windows, add this to your `pyproject.toml`:
 ```toml
 [tool.cibuildwheel.windows]
 before-all = "pip install delvewheel"
-repair-wheel-command = 'delvewheel repair --add-path "{project}/.conan-libs" -w "{dest_dir}" "{wheel}"'
+repair-wheel-command = 'delvewheel repair --add-path "{package}/.conan-libs" -w "{dest_dir}" "{wheel}"'
 ```
 
 The `.conan-libs/` directory is a build artifact and can be deleted after the
