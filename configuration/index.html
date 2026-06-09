@@ -985,7 +985,7 @@ wheel <code>.dist-info/licenses/</code> and sdist PKG-INFO.</p>
 <h2 id="shared-libraries">Shared libraries</h2>
 <p>When your extension links to Conan-provided shared libraries, the backend:</p>
 <ol>
-<li>Deploys them to a <code>.conan-libs/</code> directory next to the wheel.</li>
+<li>Deploys them to a <code>.conan-libs/</code> directory in the project source root.</li>
 <li>Patches the extension RPATH so that repair tools can discover and bundle
    those libraries.</li>
 </ol>
@@ -1008,7 +1008,7 @@ step before installing or distributing.</p>
 automatically on Linux and macOS. On Windows, add this to your <code>pyproject.toml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.cibuildwheel.windows]</span>
 <span class="n">before-all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;pip install delvewheel&quot;</span>
-<span class="n">repair-wheel-command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;delvewheel repair --add-path &quot;{wheel}/../.conan-libs&quot; -w &quot;{dest_dir}&quot; &quot;{wheel}&quot;&#39;</span>
+<span class="n">repair-wheel-command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;delvewheel repair --add-path &quot;{project}/build/.conan-libs&quot; -w &quot;{dest_dir}&quot; &quot;{wheel}&quot;&#39;</span>
 </code></pre></div>
 <p>The <code>.conan-libs/</code> directory is a build artifact and can be deleted after the
 repair step completes.</p>
