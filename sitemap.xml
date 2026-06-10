@@ -2,18 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://conan-py-build.conan.io/</loc>
-         <lastmod>2026-06-09</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://conan-py-build.conan.io/configuration/</loc>
-         <lastmod>2026-06-09</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://conan-py-build.conan.io/development/</loc>
-         <lastmod>2026-06-09</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://conan-py-build.conan.io/examples/</loc>
-         <lastmod>2026-06-09</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
 </urlset>
