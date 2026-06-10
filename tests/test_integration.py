@@ -250,6 +250,69 @@ class Pkg(ConanFile):
     assert "placeholder" not in init
 
 
+def test_wheel_exclude_drops_files_from_wheel(tmp_path, monkeypatch):
+    """wheel.exclude patterns must not end up in the wheel; other package files must survive."""
+    _PYPROJECT = """\
+[project]
+name = "integration-pkg"
+version = "0.1.0"
+description = "For integration tests"
+license-files = ["LICENSE"]
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build.wheel]
+exclude = ["binding/*.h", "binding/*.cpp"]
+"""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_PYPROJECT)
+    # Add build-time artifacts inside the package — these should be excluded.
+    binding_dir = proj / "src" / "integration_pkg" / "binding"
+    binding_dir.mkdir()
+    (binding_dir / "types.h").write_text("#pragma once\n", encoding="utf-8")
+    (binding_dir / "core.cpp").write_text("// binding source\n", encoding="utf-8")
+
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+    build_wheel(str(dist_dir), config_settings=None)
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        names = zf.namelist()
+
+    assert "integration_pkg/__init__.py" in names, "package __init__.py must still be present"
+    excluded = [n for n in names if n.startswith("integration_pkg/binding/")]
+    assert not excluded, f"build-time artifacts must not appear in wheel: {excluded}"
+
+
+def test_wheel_without_exclude_includes_binding_files(tmp_path, monkeypatch):
+    """Baseline: without wheel.exclude, files inside the package directory end up in the wheel."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj)
+    binding_dir = proj / "src" / "integration_pkg" / "binding"
+    binding_dir.mkdir()
+    (binding_dir / "types.h").write_text("#pragma once\n", encoding="utf-8")
+
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+    build_wheel(str(dist_dir), config_settings=None)
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        names = zf.namelist()
+
+    assert "integration_pkg/binding/types.h" in names, \
+        "without wheel.exclude, files inside the package must be copied into the wheel"
+
+
 def _git_init_and_tag(cwd, tag):
     """Initialise a throw-away git repo, commit everything and create *tag*."""
     env = {

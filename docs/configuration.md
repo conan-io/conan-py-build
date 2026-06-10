@@ -24,6 +24,7 @@ All project-level options live under
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
+| `exclude` | `[tool.conan-py-build.wheel]` | Glob patterns to drop files from the wheel | `[]` |
 | `include` / `exclude` | `[tool.conan-py-build.sdist]` | Glob patterns to add/remove from the sdist | `[]` / `[]` |
 
 Variants for extra profiles: `extra-profile-host`,
@@ -267,6 +268,21 @@ despite the wheel passing the repair step. Linking that library statically
 removes the dependency on the system version. You can inspect which symbols your
 code requires with `nm -D` (Linux/macOS) or `dumpbin /exports` (Windows).
 
+## Wheel exclude
+
+Use `wheel.exclude` to drop files from the wheel that live inside a
+package directory but are only needed at build time (e.g. C/C++ binding
+sources co-located with the Python package):
+
+```toml
+[tool.conan-py-build.wheel]
+packages = ["src/mypkg"]
+exclude = ["binding/*.cpp", "binding/*.h"]
+```
+
+Patterns are relative to each package root and support standard glob
+syntax (`*`, `?`, `**`).
+
 ## Sdist defaults
 
 Included: `pyproject.toml`, `conanfile.py`, your build
@@ -275,6 +291,14 @@ system's top-level file (`CMakeLists.txt`,
 README, LICENSE.
 Excluded: `__pycache__`, `*.pyc`, `.git`,
 `build`, `dist`.
+
+Patterns in `exclude` (and `include`) are matched against each file in two ways:
+
+- Against the **full relative path** from the project root — so `src/binding/*.h`
+  or `*.pyc` (which matches `src/foo.pyc`) work as expected.
+- Against **each path component individually** — so a bare name like `__pycache__`
+  or `.git` excludes that directory wherever it appears in the tree, without
+  needing a `**/__pycache__` pattern.
 
 ```toml
 [tool.conan-py-build.sdist]

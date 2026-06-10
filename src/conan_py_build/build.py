@@ -1,4 +1,5 @@
 import ast
+import fnmatch
 import io
 import os
 import shutil
@@ -98,6 +99,40 @@ def _get_sdist_config(project_dir: Path) -> dict:
         "include": include if isinstance(include, list) else [],
         "exclude": exclude if isinstance(exclude, list) else [],
     }
+
+
+def _get_wheel_config(project_dir: Path) -> dict:
+    """Read [tool.conan-py-build].wheel (merged with defaults)."""
+    tool = _get_tool_config(project_dir)
+    wheel = tool.get("wheel", {})
+    if not isinstance(wheel, dict):
+        return {"exclude": []}
+    exclude = wheel.get("exclude", [])
+    return {
+        "exclude": exclude if isinstance(exclude, list) else [],
+    }
+
+
+def _matches_exclude(rel: Path, patterns: list) -> bool:
+    rel_str = str(rel)
+    for pattern in patterns:
+        if fnmatch.fnmatch(rel_str, pattern):
+            return True
+        if any(fnmatch.fnmatch(part, pattern) for part in rel.parts):
+            return True
+    return False
+
+
+def _make_wheel_ignore(exclude_patterns: list, package_root: Path):
+    def ignore(directory: str, names: list) -> list:
+        base = Path(directory)
+        ignored = []
+        for name in names:
+            rel = (base / name).relative_to(package_root)
+            if _matches_exclude(rel, exclude_patterns):
+                ignored.append(name)
+        return ignored
+    return ignore
 
 
 def _resolve_conanfile_path(conanfile_path: str, source_dir: Path) -> Path:
@@ -584,10 +619,12 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"Conan build failed: {e}") from e
 
+    wheel_exclude = _get_wheel_config(source_dir)["exclude"]
     for python_package_dir in _get_wheel_packages(source_dir, name):
         package_dir = staging_dir / python_package_dir.name
         package_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True)
+        ignore = _make_wheel_ignore(wheel_exclude, python_package_dir) if wheel_exclude else None
+        shutil.copytree(python_package_dir, package_dir, dirs_exist_ok=True, ignore=ignore)
 
     print("Running conan export-pkg...", flush=True)
     
@@ -724,15 +761,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
             rel = path.relative_to(source_dir)
         except ValueError:
             rel = path
-        name = path.name
-        parts = rel.parts
-        for pattern in exclude_patterns:
-            if pattern.startswith("*"):
-                if name.endswith(pattern[1:]):
-                    return True
-            elif name == pattern or pattern in parts:
-                return True
-        return False
+        return _matches_exclude(rel, exclude_patterns)
 
     sdist_path = sdist_dir / sdist_filename
 
