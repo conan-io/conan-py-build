@@ -6,7 +6,6 @@ from conan.tools.microsoft import is_msvc
 
 class HelloBindingsConan(ConanFile):
     name = "hello-bindings"
-    version = "0.1.0"
     description = "Python bindings for libhello (C++ code fetched from GitHub)"
     license = "MIT"
     settings = "os", "compiler", "build_type", "arch"

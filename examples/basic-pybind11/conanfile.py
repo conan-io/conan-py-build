@@ -4,7 +4,6 @@ from conan.tools.cmake import CMake, cmake_layout
 
 class MyadderPybind11Conan(ConanFile):
     name = "myadder-pybind11"
-    version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
 

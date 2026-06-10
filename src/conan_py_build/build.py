@@ -560,6 +560,8 @@ def _do_build_wheel(
     build_cmd = [
         "build",
         resolved_conanfile,
+        "--version",
+        version,
         "-of",
         str(conan_out),
         "-d",
@@ -595,6 +597,8 @@ def _do_build_wheel(
     export_pkg_cmd = [
         "export-pkg",
         resolved_conanfile,
+        "--version",
+        version,
         "-of",
         str(conan_out),
         "-tf",
