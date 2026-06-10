@@ -292,6 +292,14 @@ README, LICENSE.
 Excluded: `__pycache__`, `*.pyc`, `.git`,
 `build`, `dist`.
 
+Patterns in `exclude` (and `include`) are matched against each file in two ways:
+
+- Against the **full relative path** from the project root — so `src/binding/*.h`
+  or `*.pyc` (which matches `src/foo.pyc`) work as expected.
+- Against **each path component individually** — so a bare name like `__pycache__`
+  or `.git` excludes that directory wherever it appears in the tree, without
+  needing a `**/__pycache__` pattern.
+
 ```toml
 [tool.conan-py-build.sdist]
 include = ["docs/"]
