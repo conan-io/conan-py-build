@@ -550,7 +550,7 @@ def _do_build_wheel(
     conanfile_path = tool.get("conanfile-path") or "."
     resolved_conanfile = str(_resolve_conanfile_path(conanfile_path, source_dir))
 
-    source_cmd = ["source", resolved_conanfile]
+    source_cmd = ["source", resolved_conanfile, "--version", version]
     print("Running conan source...", flush=True)
     try:
         conan_api.command.run(source_cmd)
@@ -560,6 +560,8 @@ def _do_build_wheel(
     build_cmd = [
         "build",
         resolved_conanfile,
+        "--version",
+        version,
         "-of",
         str(conan_out),
         "-d",
@@ -595,6 +597,8 @@ def _do_build_wheel(
     export_pkg_cmd = [
         "export-pkg",
         resolved_conanfile,
+        "--version",
+        version,
         "-of",
         str(conan_out),
         "-tf",

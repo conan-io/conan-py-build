@@ -5,7 +5,6 @@ from conan.tools.meson import Meson
 
 class MyadderMesonPybind11Conan(ConanFile):
     name = "myadder-meson-pybind11"
-    version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "MesonToolchain", "PkgConfigDeps"
 

@@ -4,7 +4,6 @@ from conan.tools.cmake import CMake, cmake_layout
 
 class MyXsltCibwConan(ConanFile):
     name = "myxslt-cibw"
-    version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
 
