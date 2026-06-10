@@ -24,6 +24,7 @@ All project-level options live under
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
+| `exclude` | `[tool.conan-py-build.wheel]` | Glob patterns to drop files from the wheel | `[]` |
 | `include` / `exclude` | `[tool.conan-py-build.sdist]` | Glob patterns to add/remove from the sdist | `[]` / `[]` |
 
 Variants for extra profiles: `extra-profile-host`,
@@ -266,6 +267,21 @@ the system version on your target machines, the import will fail at runtime
 despite the wheel passing the repair step. Linking that library statically
 removes the dependency on the system version. You can inspect which symbols your
 code requires with `nm -D` (Linux/macOS) or `dumpbin /exports` (Windows).
+
+## Wheel exclude
+
+Use `wheel.exclude` to drop files from the wheel that live inside a
+package directory but are only needed at build time (e.g. C/C++ binding
+sources co-located with the Python package):
+
+```toml
+[tool.conan-py-build.wheel]
+packages = ["src/mypkg"]
+exclude = ["binding/*.cpp", "binding/*.h"]
+```
+
+Patterns are relative to each package root and support standard glob
+syntax (`*`, `?`, `**`).
 
 ## Sdist defaults
 
