@@ -482,6 +482,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wheel-exclude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wheel exclude
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sdist-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -714,6 +725,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wheel-exclude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wheel exclude
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sdist-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -822,6 +844,12 @@
 <td><code>[tool.conan-py-build.wheel]</code></td>
 <td>Paths to Python packages in the wheel</td>
 <td><code>["src/&lt;name&gt;"]</code></td>
+</tr>
+<tr>
+<td><code>exclude</code></td>
+<td><code>[tool.conan-py-build.wheel]</code></td>
+<td>Glob patterns to drop files from the wheel</td>
+<td><code>[]</code></td>
 </tr>
 <tr>
 <td><code>include</code> / <code>exclude</code></td>
@@ -1043,6 +1071,16 @@ the system version on your target machines, the import will fail at runtime
 despite the wheel passing the repair step. Linking that library statically
 removes the dependency on the system version. You can inspect which symbols your
 code requires with <code>nm -D</code> (Linux/macOS) or <code>dumpbin /exports</code> (Windows).</p>
+<h2 id="wheel-exclude">Wheel exclude</h2>
+<p>Use <code>wheel.exclude</code> to drop files from the wheel that live inside a
+package directory but are only needed at build time (e.g. C/C++ binding
+sources co-located with the Python package):</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.wheel]</span>
+<span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/mypkg&quot;</span><span class="p">]</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;binding/*.cpp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;binding/*.h&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>Patterns are relative to each package root and support standard glob
+syntax (<code>*</code>, <code>?</code>, <code>**</code>).</p>
 <h2 id="sdist-defaults">Sdist defaults</h2>
 <p>Included: <code>pyproject.toml</code>, <code>conanfile.py</code>, your build
 system's top-level file (<code>CMakeLists.txt</code>,
@@ -1050,6 +1088,14 @@ system's top-level file (<code>CMakeLists.txt</code>,
 README, LICENSE.
 Excluded: <code>__pycache__</code>, <code>*.pyc</code>, <code>.git</code>,
 <code>build</code>, <code>dist</code>.</p>
+<p>Patterns in <code>exclude</code> (and <code>include</code>) are matched against each file in two ways:</p>
+<ul>
+<li>Against the <strong>full relative path</strong> from the project root — so <code>src/binding/*.h</code>
+  or <code>*.pyc</code> (which matches <code>src/foo.pyc</code>) work as expected.</li>
+<li>Against <strong>each path component individually</strong> — so a bare name like <code>__pycache__</code>
+  or <code>.git</code> excludes that directory wherever it appears in the tree, without
+  needing a <code>**/__pycache__</code> pattern.</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.sdist]</span>
 <span class="n">include</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;docs/&quot;</span><span class="p">]</span>
 <span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.github&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tests&quot;</span><span class="p">]</span>
