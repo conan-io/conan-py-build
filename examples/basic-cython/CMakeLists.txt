@@ -4,9 +4,11 @@ project(fmt_cython LANGUAGES CXX)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(fmt REQUIRED)
 
+find_program(CYTHON_EXECUTABLE NAMES cython cython3 REQUIRED)
+
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/_fmt.cpp
-    COMMAND ${Python3_EXECUTABLE} -m cython
+    COMMAND ${CYTHON_EXECUTABLE}
             --cplus -3
             ${CMAKE_CURRENT_SOURCE_DIR}/src/fmt_cython/_fmt.pyx
             -o ${CMAKE_CURRENT_BINARY_DIR}/_fmt.cpp
