@@ -10,4 +10,4 @@ license = "MIT"
 requires-python = ">=3.8"
 
 [tool.conan-py-build.wheel]
-packages = ["src/fmt_cython"]
+packages = ["src/myformatter"]

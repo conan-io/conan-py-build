@@ -1,7 +1,7 @@
 # distutils: language = c++
 from libcpp.string cimport string
 
-cdef extern from "fmt_wrapper.h":
+cdef extern from "formatter.h":
     string format_result(double value, int n)
 
 

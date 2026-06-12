@@ -10,12 +10,12 @@ pip install -e .  # from repo root
 
 cd examples/basic-cython
 pip wheel . --no-build-isolation -w dist/ -vvv
-pip install dist/fmt_cython-*.whl
+pip install dist/myformatter-*.whl
 ```
 
 ### Test
 
 ```bash
-python -c "import fmt_cython; print(fmt_cython.sum_of_squares([1.0, 2.0, 3.0, 4.0, 5.0]))"
+python -c "import myformatter; print(myformatter.sum_of_squares([1.0, 2.0, 3.0, 4.0, 5.0]))"
 # sum_of_squares(5 values) = 55.0000
 ```
