@@ -130,7 +130,7 @@ jobs:
           python -c "import extra_utils; assert extra_utils.add(2, 3) == 5"
           python -c "import myadder_nanobind; assert myadder_nanobind.add(2, 3) == 5; assert myadder_nanobind.add_integers(10, 20) == 30; assert myadder_nanobind.greet('World').startswith('Hello'); print('myadder_nanobind OK')"
           python -c "import hello_bindings; hello_bindings.hello(); print('hello_bindings OK')"
-          python -c "import fmt_cython; result = fmt_cython.sum_of_squares([1.0, 2.0, 3.0, 4.0, 5.0]); assert result == 'sum_of_squares(5 values) = 55.0000', result; print('fmt_cython OK')"
+          python -c "import myformatter; result = myformatter.sum_of_squares([1.0, 2.0, 3.0, 4.0, 5.0]); assert result == 'sum_of_squares(5 values) = 55.0000', result; print('myformatter OK')"
           myadder add 2 3 | grep -q "= 5"
           myadder greet World | grep -q "Hello"
         shell: bash

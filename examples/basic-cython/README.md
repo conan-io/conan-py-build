@@ -7,6 +7,7 @@ Example of a Cython extension with a typed computation loop and a C++ dependency
 
 ```bash
 pip install -e .  # from repo root
+pip install "cython>=3.0"  # required since pip wheel uses --no-build-isolation
 
 cd examples/basic-cython
 pip wheel . --no-build-isolation -w dist/ -vvv
