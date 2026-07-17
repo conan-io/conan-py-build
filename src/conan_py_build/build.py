@@ -277,6 +277,14 @@ def _extra_arguments(tool_cfg: dict) -> List[str]:
     return args
 
 
+def _clean_after_wheel(tool_cfg: dict) -> bool:
+    """Read [tool.conan-py-build].clean-after-wheel (default: True)."""
+    value = tool_cfg.get("clean-after-wheel", True)
+    if not isinstance(value, bool):
+        raise RuntimeError("[tool.conan-py-build].clean-after-wheel must be a boolean.")
+    return value
+
+
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
     if host_profile != "default" and build_profile != "default":
         return host_profile, build_profile
@@ -656,6 +664,14 @@ def _do_build_wheel(
         ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
         dirs_exist_ok=True,
     )
+
+    if _clean_after_wheel(tool):
+        exported_conanfile = export_result["graph"].root.conanfile
+        conan_ref = f"{exported_conanfile.name}/{exported_conanfile.version}"
+        try:
+            conan_api.command.run(["remove", conan_ref, "-c"])
+        except Exception as e:
+            print(f"WARNING: failed to remove {conan_ref} from the Conan cache: {e}", flush=True)
 
     # Absolute RPATHs to .conan-libs/ let repair tools discover and bundle the deployed libs.
     _set_deploy_rpath(staging_dir, runtime_deploy_dir)
