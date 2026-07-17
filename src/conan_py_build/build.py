@@ -658,7 +658,8 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
-    pkg_path = Path(export_result["graph"].serialize()["nodes"]["0"]["package_folder"])
+    root_node = export_result["graph"].serialize()["nodes"]["0"]
+    pkg_path = Path(root_node["package_folder"])
     shutil.copytree(
         pkg_path, staging_dir,
         ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
@@ -666,8 +667,7 @@ def _do_build_wheel(
     )
 
     if _clean_after_wheel(tool):
-        exported_conanfile = export_result["graph"].root.conanfile
-        conan_ref = f"{exported_conanfile.name}/{exported_conanfile.version}"
+        conan_ref = root_node["ref"]
         try:
             conan_api.command.run(["remove", conan_ref, "-c"])
         except Exception as e:
