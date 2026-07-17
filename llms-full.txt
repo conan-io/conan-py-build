@@ -192,6 +192,7 @@ All project-level options live under
 | `conanfile-path` | `[tool.conan-py-build]` | Path to the Conan recipe, relative to project root | `"."` |
 | `extra-profile` | `[tool.conan-py-build]` | Extra Conan profile composed on top of the active one | (none) |
 | `extra-arguments` | `[tool.conan-py-build]` | Extra Conan CLI flags appended to `conan build` and `conan export-pkg` | `[]` |
+| `clean-after-wheel` | `[tool.conan-py-build]` | Remove the exported Conan reference from the cache after building the wheel | `true` |
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
