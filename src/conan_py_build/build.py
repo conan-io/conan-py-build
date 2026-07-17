@@ -277,6 +277,14 @@ def _extra_arguments(tool_cfg: dict) -> List[str]:
     return args
 
 
+def _clean_after_wheel(tool_cfg: dict) -> bool:
+    """Read [tool.conan-py-build].clean-after-wheel (default: True)."""
+    value = tool_cfg.get("clean-after-wheel", True)
+    if not isinstance(value, bool):
+        raise RuntimeError("[tool.conan-py-build].clean-after-wheel must be a boolean.")
+    return value
+
+
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
     if host_profile != "default" and build_profile != "default":
         return host_profile, build_profile
@@ -650,12 +658,20 @@ def _do_build_wheel(
     except Exception as e:
         raise RuntimeError(f"Conan export-pkg failed: {e}") from e
 
-    pkg_path = Path(export_result["graph"].serialize()["nodes"]["0"]["package_folder"])
+    root_node = export_result["graph"].serialize()["nodes"]["0"]
+    pkg_path = Path(root_node["package_folder"])
     shutil.copytree(
         pkg_path, staging_dir,
         ignore=lambda _, names: [n for n in names if n in ("conaninfo.txt", "conanmanifest.txt")],
         dirs_exist_ok=True,
     )
+
+    if _clean_after_wheel(tool):
+        conan_ref = root_node["ref"]
+        try:
+            conan_api.command.run(["remove", conan_ref, "-c"])
+        except Exception as e:
+            print(f"WARNING: failed to remove {conan_ref} from the Conan cache: {e}", flush=True)
 
     # Absolute RPATHs to .conan-libs/ let repair tools discover and bundle the deployed libs.
     _set_deploy_rpath(staging_dir, runtime_deploy_dir)
