@@ -36,7 +36,8 @@ class CpythonPortableConan(ConanFile):
         copy(self, "*", src=os.path.join(self.build_folder, "python"), dst=self.package_folder)
 
     def package_info(self):
-        self.cpp_info.includedirs = ["include"]
+        # this package is intended for using as application
+        self.cpp_info.includedirs = []
         self.cpp_info.libdirs = ["lib"]
 
         if self.settings.os == "Windows":
@@ -52,6 +53,6 @@ class CpythonPortableConan(ConanFile):
         if python_exe.exists():
             python_root = python_exe.parent.parent if python_exe.parent.name == "bin" else python_exe.parent
             python_root_str = str(python_root)
-            self.runenv_info.define("Python3_ROOT", python_root_str)
-            self.buildenv_info.define("Python3_ROOT", python_root_str)
             self.buildenv_info.define("Python3_ROOT_DIR", python_root_str)
+            # Otherwise an active venv/conda would outrank Python3_ROOT_DIR.
+            self.buildenv_info.define("Python3_FIND_VIRTUALENV", "STANDARD")

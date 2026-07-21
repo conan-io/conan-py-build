@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(myadder_nanobind LANGUAGES CXX)
 
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 find_package(nanobind CONFIG REQUIRED)
 find_package(fmt REQUIRED)
