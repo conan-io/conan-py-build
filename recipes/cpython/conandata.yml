@@ -143,28 +143,3 @@ sources:
       x86_64:
         url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.14.2+20260114-x86_64-pc-windows-msvc-install_only.tar.gz"
         sha256: "73307dc1922695926a72ca42ddc660c11f20dd1bba776fc64e9c464de14e2366"
-  "3.15.0a5":
-    Linux:
-      armv8:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-aarch64-unknown-linux-gnu-install_only.tar.gz"
-        sha256: "584a8b1ab8a324608e60022e987454184e1d966fe1a4b8ac78490e6f3aae134d"
-      x86_64:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-x86_64-unknown-linux-gnu-install_only.tar.gz"
-        sha256: "b5640bfa19fa6d91cb6e3509e48d8c01a763ca40cb9686ce88b9a1cadd3dc283"
-    Macos:
-      armv8:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-aarch64-apple-darwin-install_only.tar.gz"
-        sha256: "d56252d19a38370d625b1ac05fbbd9e058259bd417c522a75ec23e2acb87aaca"
-      x86_64:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-x86_64-apple-darwin-install_only.tar.gz"
-        sha256: "c9513a9ecae1a17493c5d68ae020c7aa76f2747983a0b41eef215a11214e34be"
-    Windows:
-      armv8:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-aarch64-pc-windows-msvc-install_only.tar.gz"
-        sha256: "9b8e263633a1572b87aa527bc1a979ec1a76921795f776ba9f68202d8bd12457"
-      x86:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-i686-pc-windows-msvc-install_only.tar.gz"
-        sha256: "80e9a2127a1ccda97aaf848ffec9f13204bff57af7e35e78be60536764da19b2"
-      x86_64:
-        url: "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.15.0a5+20260114-x86_64-pc-windows-msvc-install_only.tar.gz"
-        sha256: "a6400ec6c21b673cfc82ee3fc8a7e9b700b7bb2f7807466e78b0af09d8e0da9a"
