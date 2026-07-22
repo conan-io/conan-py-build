@@ -38,7 +38,7 @@ class CpythonPortableConan(ConanFile):
     def package_info(self):
         # this package is intended for using as application
         self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = ["lib"]
+        self.cpp_info.libdirs = []
 
         if self.settings.os == "Windows":
             self.cpp_info.bindirs = ["."]
