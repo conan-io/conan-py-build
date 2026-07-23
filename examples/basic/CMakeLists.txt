@@ -27,10 +27,4 @@ set_target_properties(_core PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
-if(APPLE)
-    set_target_properties(_core PROPERTIES
-        LINK_FLAGS "-undefined dynamic_lookup"
-    )
-endif()
-
 install(TARGETS _core DESTINATION myadder)
