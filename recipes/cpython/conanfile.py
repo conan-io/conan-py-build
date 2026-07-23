@@ -3,6 +3,7 @@ from pathlib import Path
 
 from conan import ConanFile
 from conan.tools.files import get, copy
+from conan.tools.layout import basic_layout
 from conan.errors import ConanInvalidConfiguration
 from conan.tools.scm import Version
 
@@ -19,6 +20,9 @@ class CpythonPortableConan(ConanFile):
     license = "PSF-2.0"
     settings = "os", "arch"
 
+    def layout(self):
+        basic_layout(self, src_folder="src")
+
     def validate(self):
         if self.settings.arch == "x86" and self.settings.os != "Windows":
             raise ConanInvalidConfiguration("CPython binaries for x86 architecture are only provided for Windows. ")
@@ -33,7 +37,15 @@ class CpythonPortableConan(ConanFile):
             destination=self.source_folder)
 
     def package(self):
-        copy(self, "*", src=os.path.join(self.build_folder, "python"), dst=self.package_folder)
+        source_folder = os.path.join(self.source_folder, "python")
+        copy(self, "*", src=source_folder, dst=self.package_folder)
+
+        if self.settings.os == "Windows":
+            license_folder = source_folder
+        else:
+            major_minor = ".".join(self.version.split(".")[:2])
+            license_folder = os.path.join(source_folder, "lib", f"python{major_minor}")
+        copy(self, "LICENSE.txt", src=license_folder, dst=os.path.join(self.package_folder, "licenses"))
 
     def package_info(self):
         # this package is intended for using as application
