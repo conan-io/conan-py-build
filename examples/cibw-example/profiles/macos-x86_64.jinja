@@ -1,6 +1,3 @@
-{% set py_ver = os.environ["CONAN_CPYTHON_VERSION"] %}
-{% set py_tag = "cp" + "".join(py_ver.split(".")[:2]) %}
-{% set cpython_ref = "cpython-portable/" + py_ver %}
 include(default)
 
 [settings]
@@ -9,9 +6,10 @@ os.version=11.0
 
 [tool_requires]
 cmake/[>3.29]
-&:{{ cpython_ref }}
 
 [buildenv]
-WHEEL_PYVER={{ py_tag }}
-WHEEL_ABI={{ py_tag }}
+MACOSX_DEPLOYMENT_TARGET=11.0
+# Cross build: the running interpreter is arm64, so its auto-detected platform tag
+# would be wrong. Pin the wheel's platform tag to the x86_64 target. (pyver/abi are
+# still auto-detected correctly from the interpreter cibuildwheel provides.)
 WHEEL_ARCH=macosx_11_0_x86_64

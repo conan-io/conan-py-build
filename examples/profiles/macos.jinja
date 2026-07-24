@@ -1,16 +1,11 @@
-{% set py_ver = os.environ["CONAN_CPYTHON_VERSION"] %}
-{% set py_tag = "cp" + "".join(py_ver.split(".")[:2]) %}
-{% set cpython_ref = "cpython-portable/" + py_ver %}
 {% set wheel_arch = "arm64" if platform.machine() == "arm64" else "x86_64" %}
 include(default)
 
 [settings]
 os.version=11.0
 
-[tool_requires]
-&:{{ cpython_ref }}
-
 [buildenv]
-WHEEL_PYVER={{ py_tag }}
-WHEEL_ABI={{ py_tag }}
+# Pin the wheel's platform tag to the deployment target (os.version above). Otherwise
+# auto-detection uses the build machine's macOS version, which would tag the wheel too
+# high and make it uninstallable on older, still-supported macOS versions.
 WHEEL_ARCH=macosx_11_0_{{ wheel_arch }}
