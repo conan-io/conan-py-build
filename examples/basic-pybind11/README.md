@@ -45,11 +45,14 @@ pip uninstall myadder-pybind11 -y
 
 ### With custom Conan profiles
 
-The `examples/profiles/` directory contains Jinja profiles. Use
-`CONAN_CPYTHON_VERSION` to the full version (e.g. 3.12.12) to choose Python:
+A custom `host-profile` is optional: plain Linux/Windows builds work against the
+default profile. macOS ships a profile (`examples/profiles/macos.jinja`) that
+pins the deployment target and platform tag. The wheel is built against the
+interpreter you run `pip wheel` with, so pick the Python version by using that
+interpreter (a venv, or cibuildwheel per version):
 
 ```bash
-export CONAN_CPYTHON_VERSION=3.12.12
+# macOS: pin the deployment target / platform tag
 pip wheel . --no-build-isolation \
     --config-settings="host-profile=../profiles/macos.jinja" \
     -w dist/ -vvv

@@ -64,10 +64,17 @@ exclusive. For setuptools-scm options see
 
 ## Profiles
 
+The wheel is built against the interpreter running the build (your venv, or the
+one cibuildwheel provides); pick the Python version by running the build with
+it.
+
+A custom `host-profile` is optional. The default profile works for plain native
+builds. Pass one when you need extra settings (the bundled macOS profile, for
+example, pins the deployment target and platform tag):
+
 ```bash
-export CONAN_CPYTHON_VERSION=3.12.12
 pip wheel . --no-build-isolation \
-    -C host-profile=examples/profiles/linux.jinja \
+    -C host-profile=examples/profiles/macos.jinja \
     -C build-dir=./build \
     -w dist/
 ```
@@ -85,9 +92,8 @@ extra-profile = "cpp17.profile"
 
 By default the backend reads the wheel filename tags
 (interpreter, ABI, platform) from the running Python
-interpreter. When you build against a **portable
-CPython** (via the `cpython-portable` Conan recipe) or
-cross-compile, set these three variables in the profile's
+interpreter. When you cross-compile or otherwise need to
+force the tags, set these three variables in the profile's
 `[buildenv]` to override them:
 
 | Variable | Wheel tag | Example |
@@ -98,25 +104,26 @@ cross-compile, set these three variables in the profile's
 
 Each variable independently overrides its auto-detected
 value. Auto-detection always runs from the current
-interpreter. Any variable that is set replaces only its
-corresponding tag.
+interpreter, so for a normal native build you do **not**
+need to set any of them. You only override the tag that the
+build interpreter cannot report correctly.
 
-A typical Jinja profile sets all three from
-`CONAN_CPYTHON_VERSION`:
+For example, building an x86_64 wheel on an arm64 macOS
+runner: the interpreter is arm64, so only its platform tag
+is wrong and needs pinning (the interpreter/ABI tags are
+still detected correctly):
 
-```jinja
-{% set py_ver = os.environ["CONAN_CPYTHON_VERSION"] %}
-{% set py_tag = "cp" + "".join(py_ver.split(".")[:2]) %}
+```
+[settings]
+arch=x86_64
 
 [buildenv]
-WHEEL_PYVER={{ py_tag }}
-WHEEL_ABI={{ py_tag }}
-WHEEL_ARCH=manylinux_2_28_x86_64
+WHEEL_ARCH=macosx_11_0_x86_64
 ```
 
 The resulting wheel filename will be, for example,
-`mypackage-0.1.0-cp312-cp312-manylinux_2_28_x86_64.whl`.
-Working examples for Linux, macOS and Windows live under
+`mypackage-0.1.0-cp312-cp312-macosx_11_0_x86_64.whl`.
+A working macOS profile lives under
 [`examples/profiles/`](https://github.com/conan-io/conan-py-build/tree/main/examples/profiles).
 
 ## Conan home
