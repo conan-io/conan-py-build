@@ -1,12 +1,14 @@
+import sys
+
 from conan import ConanFile
 from conan.tools.layout import basic_layout
-from conan.tools.meson import Meson
+from conan.tools.meson import Meson, MesonToolchain
 
 
 class MyadderMesonPybind11Conan(ConanFile):
     name = "myadder-meson-pybind11"
     settings = "os", "compiler", "build_type", "arch"
-    generators = "MesonToolchain", "PkgConfigDeps"
+    generators = "PkgConfigDeps"
 
     def layout(self):
         basic_layout(self)
@@ -18,6 +20,11 @@ class MyadderMesonPybind11Conan(ConanFile):
     def build_requirements(self):
         self.tool_requires("meson/[>=1.4.0 <2]")
         self.tool_requires("pkgconf/[>=2.2 <3]")
+
+    def generate(self):
+        tc = MesonToolchain(self)
+        tc.binaries["python"] = sys.executable
+        tc.generate()
 
     def build(self):
         meson = Meson(self)
