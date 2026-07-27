@@ -894,9 +894,14 @@ arguments</em> below).</p>
 exclusive. For setuptools-scm options see
 <a href="https://setuptools-scm.readthedocs.io/"><code>[tool.setuptools_scm]</code></a>.</p>
 <h2 id="profiles">Profiles</h2>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">CONAN_CPYTHON_VERSION</span><span class="o">=</span><span class="m">3</span>.12.12
-pip<span class="w"> </span>wheel<span class="w"> </span>.<span class="w"> </span>--no-build-isolation<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-C<span class="w"> </span>host-profile<span class="o">=</span>examples/profiles/linux.jinja<span class="w"> </span><span class="se">\</span>
+<p>The wheel is built against the interpreter running the build (your venv, or the
+one cibuildwheel provides); pick the Python version by running the build with
+it.</p>
+<p>A custom <code>host-profile</code> is optional. The default profile works for plain native
+builds. Pass one when you need extra settings (the bundled macOS profile, for
+example, pins the deployment target and platform tag):</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>wheel<span class="w"> </span>.<span class="w"> </span>--no-build-isolation<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-C<span class="w"> </span>host-profile<span class="o">=</span>examples/profiles/macos.jinja<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-C<span class="w"> </span>build-dir<span class="o">=</span>./build<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-w<span class="w"> </span>dist/
 </code></pre></div>
@@ -909,9 +914,8 @@ e.g. <code>compiler.cppstd=17</code>:</p>
 <h3 id="wheel-tags-wheel_pyver-wheel_abi-wheel_arch">Wheel tags (<code>WHEEL_PYVER</code>, <code>WHEEL_ABI</code>, <code>WHEEL_ARCH</code>)</h3>
 <p>By default the backend reads the wheel filename tags
 (interpreter, ABI, platform) from the running Python
-interpreter. When you build against a <strong>portable
-CPython</strong> (via the <code>cpython-portable</code> Conan recipe) or
-cross-compile, set these three variables in the profile's
+interpreter. When you cross-compile or otherwise need to
+force the tags, set these three variables in the profile's
 <code>[buildenv]</code> to override them:</p>
 <table>
 <thead>
@@ -941,21 +945,22 @@ cross-compile, set these three variables in the profile's
 </table>
 <p>Each variable independently overrides its auto-detected
 value. Auto-detection always runs from the current
-interpreter. Any variable that is set replaces only its
-corresponding tag.</p>
-<p>A typical Jinja profile sets all three from
-<code>CONAN_CPYTHON_VERSION</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="cp">{%</span> <span class="k">set</span> <span class="nv">py_ver</span> <span class="o">=</span> <span class="nv">os.environ</span><span class="o">[</span><span class="s2">&quot;CONAN_CPYTHON_VERSION&quot;</span><span class="o">]</span> <span class="cp">%}</span>
-<span class="cp">{%</span> <span class="k">set</span> <span class="nv">py_tag</span> <span class="o">=</span> <span class="s2">&quot;cp&quot;</span> <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="nv">.join</span><span class="o">(</span><span class="nv">py_ver.split</span><span class="o">(</span><span class="s2">&quot;.&quot;</span><span class="o">)[:</span><span class="m">2</span><span class="o">])</span> <span class="cp">%}</span>
+interpreter, so for a normal native build you do <strong>not</strong>
+need to set any of them. You only override the tag that the
+build interpreter cannot report correctly.</p>
+<p>For example, building an x86_64 wheel on an arm64 macOS
+runner: the interpreter is arm64, so only its platform tag
+is wrong and needs pinning (the interpreter/ABI tags are
+still detected correctly):</p>
+<div class="highlight"><pre><span></span><code>[settings]
+arch=x86_64
 
-<span class="x">[buildenv]</span>
-<span class="x">WHEEL_PYVER=</span><span class="cp">{{</span> <span class="nv">py_tag</span> <span class="cp">}}</span>
-<span class="x">WHEEL_ABI=</span><span class="cp">{{</span> <span class="nv">py_tag</span> <span class="cp">}}</span>
-<span class="x">WHEEL_ARCH=manylinux_2_28_x86_64</span>
+[buildenv]
+WHEEL_ARCH=macosx_11_0_x86_64
 </code></pre></div>
 <p>The resulting wheel filename will be, for example,
-<code>mypackage-0.1.0-cp312-cp312-manylinux_2_28_x86_64.whl</code>.
-Working examples for Linux, macOS and Windows live under
+<code>mypackage-0.1.0-cp312-cp312-macosx_11_0_x86_64.whl</code>.
+A working macOS profile lives under
 <a href="https://github.com/conan-io/conan-py-build/tree/main/examples/profiles"><code>examples/profiles/</code></a>.</p>
 <h2 id="conan-home">Conan home</h2>
 <p>The backend uses Conan's default home (<code>~/.conan2</code>,
