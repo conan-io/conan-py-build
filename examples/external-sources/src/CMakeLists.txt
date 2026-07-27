@@ -13,8 +13,4 @@ pybind11_add_module(_core hello_bindings.cpp)
 target_link_libraries(_core PRIVATE hello pybind11::module)
 target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libhello/include)
 
-if(APPLE)
-    set_target_properties(_core PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
-endif()
-
 install(TARGETS _core DESTINATION hello_bindings)
