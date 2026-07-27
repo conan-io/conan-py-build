@@ -3,6 +3,7 @@ import fnmatch
 import io
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 from contextlib import contextmanager
@@ -285,6 +286,14 @@ def _clean_after_wheel(tool_cfg: dict) -> bool:
     return value
 
 
+def _python_executable_conf() -> str:
+    """Conf so CMake-based recipes get Python3_EXECUTABLE/Python_EXECUTABLE for free.
+    repr(), not an f-string: Conan's conf parser uses eval(), which mangles raw backslashes.
+    """
+    value = {"Python3_EXECUTABLE": sys.executable, "Python_EXECUTABLE": sys.executable}
+    return f"tools.cmake.cmaketoolchain:extra_variables={value!r}"
+
+
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
     if host_profile != "default" and build_profile != "default":
         return host_profile, build_profile
@@ -556,6 +565,7 @@ def _do_build_wheel(
     conan_out = (base_dir / "conan_out").resolve()
 
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
+    python_executable_conf = _python_executable_conf()
 
     runtime_deploy_dir = (source_dir / "build" / ".conan-libs").resolve()
     if runtime_deploy_dir.exists():
@@ -613,6 +623,8 @@ def _do_build_wheel(
         str(runtime_deploy_dir),
         "-c",
         user_presets_conf,
+        "-c",
+        python_executable_conf,
         "--build=missing",
     ]
     build_cmd.extend(profile_args)
@@ -650,6 +662,8 @@ def _do_build_wheel(
         "",
         "-c",
         user_presets_conf,
+        "-c",
+        python_executable_conf,
     ]
     export_pkg_cmd.extend(profile_args)
     export_pkg_cmd.extend(extra_args)

@@ -1,6 +1,7 @@
 """Integration tests: run real PEP 517 hooks (build_sdist, build_wheel) on a project layout."""
 import os
 import subprocess
+import sys
 import tarfile
 import types
 import zipfile
@@ -163,6 +164,43 @@ def test_build_wheel_integration(integration_project, capfd):
     assert (wheel_dir / name).is_file()
     _, err = capfd.readouterr()
     assert "source_called" in err
+
+
+def test_build_wheel_injects_python_executable_for_cmake(integration_project, capfd):
+    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable for free."""
+    _CONANFILE = """\
+from conan import ConanFile
+from conan.tools.cmake import CMake, cmake_layout
+
+
+class Pkg(ConanFile):
+    name = "integration_pkg"
+    settings = "os", "compiler", "build_type", "arch"
+    generators = "CMakeToolchain", "CMakeDeps"
+
+    def layout(self):
+        cmake_layout(self)
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+"""
+    (integration_project.project_dir / "conanfile.py").write_text(_CONANFILE, encoding="utf-8")
+    (integration_project.project_dir / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.15)\n"
+        "project(x)\n"
+        'message(STATUS "PY3=${Python3_EXECUTABLE}")\n'
+        'message(STATUS "PY=${Python_EXECUTABLE}")\n',
+        encoding="utf-8",
+    )
+
+    wheel_dir = integration_project.work_dir / "dist"
+    wheel_dir.mkdir()
+    build_wheel(str(wheel_dir), config_settings=None)
+
+    output = "".join(capfd.readouterr())
+    assert f"PY3={sys.executable}" in output
+    assert f"PY={sys.executable}" in output
 
 
 def test_wheel_does_not_contain_conan_output(integration_project):
