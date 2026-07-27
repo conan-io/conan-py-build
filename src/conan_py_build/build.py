@@ -287,7 +287,7 @@ def _clean_after_wheel(tool_cfg: dict) -> bool:
 
 
 def _python_executable_conf() -> str:
-    """Conf so CMake-based recipes get Python3_EXECUTABLE/Python_EXECUTABLE for free.
+    """Conf that sets Python3_EXECUTABLE/Python_EXECUTABLE for CMake-based recipes.
     repr(), not an f-string: Conan's conf parser uses eval(), which mangles raw backslashes.
     """
     value = {"Python3_EXECUTABLE": sys.executable, "Python_EXECUTABLE": sys.executable}

@@ -167,7 +167,7 @@ def test_build_wheel_integration(integration_project, capfd):
 
 
 def test_build_wheel_injects_python_executable_for_cmake(integration_project, capfd):
-    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable for free."""
+    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable."""
     _CONANFILE = """\
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
