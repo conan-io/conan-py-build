@@ -288,7 +288,9 @@ def _clean_after_wheel(tool_cfg: dict) -> bool:
 
 def _python_executable_conf() -> str:
     """Conf that sets Python3_EXECUTABLE/Python_EXECUTABLE for CMake-based recipes."""
-    value = {"Python3_EXECUTABLE": sys.executable, "Python_EXECUTABLE": sys.executable}
+    # "/" avoids breaking CMake's own escape parsing on Windows paths.
+    python_path = sys.executable.replace("\\", "/")
+    value = {"Python3_EXECUTABLE": python_path, "Python_EXECUTABLE": python_path}
     return f"tools.cmake.cmaketoolchain:extra_variables={value!r}"
 
 
