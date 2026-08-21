@@ -1098,7 +1098,18 @@ system's top-level file (<code>CMakeLists.txt</code>,
 <code>meson.build</code>), <code>cmake/</code>, <code>src/</code>, <code>include/</code>,
 README, LICENSE.
 Excluded: <code>__pycache__</code>, <code>*.pyc</code>, <code>.git</code>,
-<code>build</code>, <code>dist</code>.</p>
+<code>build</code>, <code>dist</code>, and compiled extensions
+(<code>*.so</code>, <code>*.pyd</code>, <code>*.dylib</code>) left behind by an
+in-place or editable build.</p>
+<p>Whatever the backend itself reads is added too,
+wherever it lives, so you never repeat it under
+<code>include</code>: every path in <code>wheel.packages</code>,
+<code>version.file</code> (or setuptools-scm's
+<code>version_file</code>), <code>conandata.yml</code> next to the
+recipe, and every <code>extra-profile</code> variant.</p>
+<p>Paths your <em>own</em> build reads, such as sources or
+patches outside <code>src/</code>, are still yours to add
+with <code>include</code>.</p>
 <p>Patterns in <code>exclude</code> (and <code>include</code>) are matched against each file in two ways:</p>
 <ul>
 <li>Against the <strong>full relative path</strong> from the project root — so <code>src/binding/*.h</code>
