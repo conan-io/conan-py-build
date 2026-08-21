@@ -880,12 +880,12 @@ arguments</em> below).</p>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.version]</span>
-<span class="n">file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src/mypackage/__init__.py&quot;</span>
+<span class="n">file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"src/mypackage/__init__.py"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.version]</span>
-<span class="n">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;setuptools_scm&quot;</span>
+<span class="n">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"setuptools_scm"</span>
 </code></pre></div>
 </div>
 </div>
@@ -909,7 +909,7 @@ example, pins the deployment target and platform tag):</p>
 <strong>on top</strong> of the active profile — useful for enforcing
 e.g. <code>compiler.cppstd=17</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
-<span class="n">extra-profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cpp17.profile&quot;</span>
+<span class="n">extra-profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"cpp17.profile"</span>
 </code></pre></div>
 <h3 id="wheel-tags-wheel_pyver-wheel_abi-wheel_arch">Wheel tags (<code>WHEEL_PYVER</code>, <code>WHEEL_ABI</code>, <code>WHEEL_ARCH</code>)</h3>
 <p>By default the backend reads the wheel filename tags
@@ -976,20 +976,20 @@ profile entry.</p>
 (e.g. <code>gdal/3.12.1</code> requires C++17, MSVC defaults
 to 14):</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
-<span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;-s=compiler.cppstd=17&quot;</span><span class="p">]</span>
+<span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"-s=compiler.cppstd=17"</span><span class="p">]</span>
 </code></pre></div>
 <p>Disable an optional dep feature and pin parallelism:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
 <span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;-o=gdal/*:with_arrow=False&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;-c=tools.build:jobs=4&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"-o=gdal/*:with_arrow=False"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"-c=tools.build:jobs=4"</span><span class="p">,</span>
 <span class="p">]</span>
 </code></pre></div>
 <p>For values with embedded double quotes (dict / list
 <code>[conf]</code> literals), use TOML literal strings (<code>'...'</code>):</p>
 <div class="highlight"><pre><span></span><code><span class="n">extra-arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s1">&#39;-c=tools.build:cflags+=[&quot;-O2&quot;, &quot;-fPIC&quot;]&#39;</span><span class="p">,</span>
-<span class="w">    </span><span class="s1">&#39;-c=tools.cmake.cmaketoolchain:extra_variables={&quot;FOO&quot;: &quot;bar&quot;}&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'-c=tools.build:cflags+=["-O2", "-fPIC"]'</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'-c=tools.cmake.cmaketoolchain:extra_variables={"FOO": "bar"}'</span><span class="p">,</span>
 <span class="p">]</span>
 </code></pre></div>
 <p>Any Conan CLI flag works: <code>-s</code> / <code>-o</code> / <code>-c</code> (host),
@@ -1007,13 +1007,13 @@ wrappers at install time; runtime tools like
 <code>importlib.metadata.entry_points()</code> read them
 from this file.</p>
 <div class="highlight"><pre><span></span><code><span class="k">[project.scripts]</span>
-<span class="n">mycli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.cli:main&quot;</span>
+<span class="n">mycli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mypackage.cli:main"</span>
 
 <span class="k">[project.gui-scripts]</span>
-<span class="n">mygui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.gui:run&quot;</span>
+<span class="n">mygui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mypackage.gui:run"</span>
 
-<span class="k">[project.entry-points.</span><span class="s2">&quot;myplugin.hooks&quot;</span><span class="k">]</span>
-<span class="n">on_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mypackage.hooks:on_event&quot;</span>
+<span class="k">[project.entry-points.</span><span class="s2">"myplugin.hooks"</span><span class="k">]</span>
+<span class="n">on_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mypackage.hooks:on_event"</span>
 </code></pre></div>
 <p>The file is only written when at least one entry
 point is declared.</p>
@@ -1046,8 +1046,8 @@ step before installing or distributing.</p>
 <p><a href="https://cibuildwheel.pypa.io/"><code>cibuildwheel</code></a> runs the right tool
 automatically on Linux and macOS. On Windows, add this to your <code>pyproject.toml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.cibuildwheel.windows]</span>
-<span class="n">before-all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;pip install delvewheel&quot;</span>
-<span class="n">repair-wheel-command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;delvewheel repair --add-path &quot;{project}/build/.conan-libs&quot; -w &quot;{dest_dir}&quot; &quot;{wheel}&quot;&#39;</span>
+<span class="n">before-all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"pip install delvewheel"</span>
+<span class="n">repair-wheel-command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'delvewheel repair --add-path "{project}/build/.conan-libs" -w "{dest_dir}" "{wheel}"'</span>
 </code></pre></div>
 <p>The <code>.conan-libs/</code> directory is a build artifact and can be deleted after the
 repair step completes.</p>
@@ -1087,8 +1087,8 @@ code requires with <code>nm -D</code> (Linux/macOS) or <code>dumpbin /exports</c
 package directory but are only needed at build time (e.g. C/C++ binding
 sources co-located with the Python package):</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.wheel]</span>
-<span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/mypkg&quot;</span><span class="p">]</span>
-<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;binding/*.cpp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;binding/*.h&quot;</span><span class="p">]</span>
+<span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"src/mypkg"</span><span class="p">]</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"binding/*.cpp"</span><span class="p">,</span><span class="w"> </span><span class="s2">"binding/*.h"</span><span class="p">]</span>
 </code></pre></div>
 <p>Patterns are relative to each package root and support standard glob
 syntax (<code>*</code>, <code>?</code>, <code>**</code>).</p>
@@ -1108,8 +1108,8 @@ Excluded: <code>__pycache__</code>, <code>*.pyc</code>, <code>.git</code>,
   needing a <code>**/__pycache__</code> pattern.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.sdist]</span>
-<span class="n">include</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;docs/&quot;</span><span class="p">]</span>
-<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.github&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tests&quot;</span><span class="p">]</span>
+<span class="n">include</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"docs/"</span><span class="p">]</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">".github"</span><span class="p">,</span><span class="w"> </span><span class="s2">"tests"</span><span class="p">]</span>
 </code></pre></div>
 
 
