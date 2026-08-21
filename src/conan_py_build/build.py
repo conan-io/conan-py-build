@@ -104,11 +104,12 @@ def _get_sdist_config(project_dir: Path) -> dict:
 
 def _get_sdist_required_paths(source_dir: Path, name: str) -> List[str]:
     """
-    Project-relative paths the backend itself reads to build a wheel.
+    Files the backend reads when it builds a wheel, so an sdist has to contain them:
+    the Conan recipe and its ``conandata.yml``, any extra profiles, the file holding
+    the version, and the ``wheel.packages`` directories.
 
-    Derived from configuration, so an sdist always carries them and a project never
-    restates them under ``sdist.include``. The heuristic defaults (``src``,
-    ``CMakeLists.txt``, ...) cover what the project's own build reads.
+    Paths are relative to the project root. Files that only the project's own build
+    needs are not here, and come from ``default_include`` or ``sdist.include``.
     """
     tool = _get_tool_config(source_dir)
     required = []
