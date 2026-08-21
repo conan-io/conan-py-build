@@ -102,6 +102,47 @@ def _get_sdist_config(project_dir: Path) -> dict:
     }
 
 
+def _get_sdist_required_paths(source_dir: Path, name: str) -> List[str]:
+    """
+    Project-relative paths the backend itself reads to build a wheel.
+
+    Derived from configuration, so an sdist always carries them and a project never
+    restates them under ``sdist.include``. The heuristic defaults (``src``,
+    ``CMakeLists.txt``, ...) cover what the project's own build reads.
+    """
+    tool = _get_tool_config(source_dir)
+    required = []
+
+    # The recipe, plus the conandata.yml Conan loads alongside it.
+    conanfile_path = tool.get("conanfile-path") or "."
+    resolved_conanfile = _resolve_conanfile_path(conanfile_path, source_dir)
+    required.append(resolved_conanfile.relative_to(source_dir).as_posix())
+    conandata = resolved_conanfile.parent / "conandata.yml"
+    if conandata.is_file():
+        required.append(conandata.relative_to(source_dir).as_posix())
+
+    # Extra profiles, resolved relative to the project root when building.
+    for key, val in tool.items():
+        if key.startswith("extra-profile") and val and isinstance(val, str):
+            required.append(Path(val).as_posix())
+
+    # Wherever the version comes from.
+    if _uses_setuptools_scm(source_dir):
+        version_file = _read_pyproject(source_dir).get("tool", {}).get("setuptools_scm", {}).get("version_file")
+    else:
+        version_file = tool.get("version", {}).get("file")
+    if version_file:
+        required.append(Path(version_file).as_posix())
+
+    # Whole directories: wheel.exclude drops build-time sources such as the C++ binding
+    # files from the wheel, and a build from the sdist needs exactly those.
+    source_resolved = source_dir.resolve()
+    for package_dir in _get_wheel_packages(source_dir, name):
+        required.append(package_dir.relative_to(source_resolved).as_posix())
+
+    return required
+
+
 def _get_wheel_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build].wheel (merged with defaults)."""
     tool = _get_tool_config(project_dir)
@@ -756,20 +797,18 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "LICENSE",
     ]
 
-    tool = _get_tool_config(source_dir)
-    conanfile_path = tool.get("conanfile-path") or "."
-    resolved_conanfile = _resolve_conanfile_path(conanfile_path, source_dir)
-    default_include.append(resolved_conanfile.relative_to(source_dir).as_posix())
-
-    if _uses_setuptools_scm(source_dir):
-        version_file = _read_pyproject(source_dir).get("tool", {}).get("setuptools_scm", {}).get("version_file")
-        if version_file:
-            default_include.append(version_file)
+    required_paths = _get_sdist_required_paths(source_dir, _normalize_name(name))
+    default_include.extend(required_paths)
 
     default_exclude = [
         "__pycache__",
         "*.pyc",
         "*.pyo",
+        # Compiled extensions from an in-place or editable build. The sdist exists to
+        # rebuild them, and shipping one pins the tarball to one platform.
+        "*.so",
+        "*.pyd",
+        "*.dylib",
         ".git",
         ".gitignore",
         "build",
