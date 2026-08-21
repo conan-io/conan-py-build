@@ -447,6 +447,6 @@ exclude = ["README.md", "notes.txt"]
     with tarfile.open(sdist_dir / build_sdist(str(sdist_dir)), "r:gz") as tar:
         names = tar.getnames()
 
-    assert "integration-pkg-0.1.0/README.md" not in names       # top-level file
-    assert "integration-pkg-0.1.0/src/notes.txt" not in names   # inside a directory
-    assert "integration-pkg-0.1.0/CMakeLists.txt" in names
+    assert "integration_pkg-0.1.0/README.md" not in names       # top-level file
+    assert "integration_pkg-0.1.0/src/notes.txt" not in names   # inside a directory
+    assert "integration_pkg-0.1.0/CMakeLists.txt" in names
