@@ -427,3 +427,26 @@ version_file = "src/scm_pkg/_version.py"
     with tarfile.open(sdist_dir / filename, "r:gz") as tar:
         names = tar.getnames()
         assert "scm_pkg-3.0.0/src/scm_pkg/_version.py" in names
+
+
+def test_build_sdist_exclude_applies_to_top_level_files(tmp_path, monkeypatch):
+    """Integration: sdist.exclude drops top-level files, not only files found
+    inside the included directories."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.sdist]
+exclude = ["README.md", "notes.txt"]
+""")
+    (proj / "README.md").write_text("readme", encoding="utf-8")
+    (proj / "src" / "notes.txt").write_text("notes", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    with tarfile.open(sdist_dir / build_sdist(str(sdist_dir)), "r:gz") as tar:
+        names = tar.getnames()
+
+    assert "integration_pkg-0.1.0/README.md" not in names       # top-level file
+    assert "integration_pkg-0.1.0/src/notes.txt" not in names   # inside a directory
+    assert "integration_pkg-0.1.0/CMakeLists.txt" in names
