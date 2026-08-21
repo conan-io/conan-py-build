@@ -86,23 +86,25 @@ def test_build_sdist_produces_tarball(integration_project):
     sdist_dir.mkdir()
     filename = build_sdist(str(sdist_dir), config_settings=None)
 
-    assert filename == "integration-pkg-0.1.0.tar.gz"
+    assert filename == "integration_pkg-0.1.0.tar.gz"
     tarball = sdist_dir / filename
     assert tarball.is_file()
 
     with tarfile.open(tarball, "r:gz") as tar:
         names = sorted(tar.getnames())
         expected = sorted([
-            "integration-pkg-0.1.0/CMakeLists.txt",
-            "integration-pkg-0.1.0/LICENSE",
-            "integration-pkg-0.1.0/PKG-INFO",
-            "integration-pkg-0.1.0/conanfile.py",
-            "integration-pkg-0.1.0/pyproject.toml",
-            "integration-pkg-0.1.0/src/integration_pkg/__init__.py",
+            "integration_pkg-0.1.0/CMakeLists.txt",
+            "integration_pkg-0.1.0/LICENSE",
+            "integration_pkg-0.1.0/PKG-INFO",
+            "integration_pkg-0.1.0/conanfile.py",
+            "integration_pkg-0.1.0/pyproject.toml",
+            "integration_pkg-0.1.0/src/integration_pkg/__init__.py",
         ])
         assert names == expected
-        pkg_info = tar.extractfile("integration-pkg-0.1.0/PKG-INFO").read().decode("utf-8")
+        pkg_info = tar.extractfile("integration_pkg-0.1.0/PKG-INFO").read().decode("utf-8")
         assert "License-File: LICENSE" in pkg_info
+        # PEP 625 normalizes the file and directory names above, not the metadata.
+        assert "Name: integration-pkg" in pkg_info
 
 
 def test_build_wheel_includes_license_in_dist_info(integration_project):
@@ -126,8 +128,8 @@ def test_sdist_pkg_info_and_wheel_metadata_identical(integration_project):
     build_sdist(str(dist_dir), config_settings=None)
     build_wheel(str(dist_dir), config_settings=None)
 
-    with tarfile.open(dist_dir / "integration-pkg-0.1.0.tar.gz", "r:gz") as tar:
-        pkg_info = tar.extractfile("integration-pkg-0.1.0/PKG-INFO").read().decode("utf-8")
+    with tarfile.open(dist_dir / "integration_pkg-0.1.0.tar.gz", "r:gz") as tar:
+        pkg_info = tar.extractfile("integration_pkg-0.1.0/PKG-INFO").read().decode("utf-8")
 
     (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
     with zipfile.ZipFile(wheel_path) as zf:
@@ -390,7 +392,7 @@ file = "src/file_pkg/__init__.py"
 
     sdist_dir = tmp_path / "dist"
     sdist_dir.mkdir()
-    assert build_sdist(str(sdist_dir)) == "file-pkg-2.3.4.tar.gz"
+    assert build_sdist(str(sdist_dir)) == "file_pkg-2.3.4.tar.gz"
 
 
 
@@ -420,12 +422,34 @@ version_file = "src/scm_pkg/_version.py"
     sdist_dir = tmp_path / "dist"
     sdist_dir.mkdir()
     filename = build_sdist(str(sdist_dir))
-    assert filename == "scm-pkg-3.0.0.tar.gz"
+    assert filename == "scm_pkg-3.0.0.tar.gz"
 
     with tarfile.open(sdist_dir / filename, "r:gz") as tar:
         names = tar.getnames()
-        assert "scm-pkg-3.0.0/src/scm_pkg/_version.py" in names
+        assert "scm_pkg-3.0.0/src/scm_pkg/_version.py" in names
 
+
+def test_build_sdist_exclude_applies_to_top_level_files(tmp_path, monkeypatch):
+    """Integration: sdist.exclude drops top-level files, not only files found
+    inside the included directories."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.sdist]
+exclude = ["README.md", "notes.txt"]
+""")
+    (proj / "README.md").write_text("readme", encoding="utf-8")
+    (proj / "src" / "notes.txt").write_text("notes", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir()
+    with tarfile.open(sdist_dir / build_sdist(str(sdist_dir)), "r:gz") as tar:
+        names = tar.getnames()
+
+    assert "integration_pkg-0.1.0/README.md" not in names       # top-level file
+    assert "integration_pkg-0.1.0/src/notes.txt" not in names   # inside a directory
+    assert "integration_pkg-0.1.0/CMakeLists.txt" in names
 
 def _sdist_names(tmp_path, expected_filename):
     """Build the sdist of the current project and return the tarball member names."""
@@ -462,9 +486,9 @@ packages = ["python/outside_pkg"]
     monkeypatch.chdir(proj)
     monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
 
-    names = _sdist_names(tmp_path, "outside-pkg-4.5.6.tar.gz")
-    assert "outside-pkg-4.5.6/python/outside_pkg/__init__.py" in names
-    assert "outside-pkg-4.5.6/python/outside_pkg/helper.py" in names
+    names = _sdist_names(tmp_path, "outside_pkg-4.5.6.tar.gz")
+    assert "outside_pkg-4.5.6/python/outside_pkg/__init__.py" in names
+    assert "outside_pkg-4.5.6/python/outside_pkg/helper.py" in names
 
 
 def test_build_sdist_includes_conandata(tmp_path, monkeypatch):
@@ -475,8 +499,8 @@ def test_build_sdist_includes_conandata(tmp_path, monkeypatch):
     monkeypatch.chdir(proj)
     monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
 
-    names = _sdist_names(tmp_path, "integration-pkg-0.1.0.tar.gz")
-    assert "integration-pkg-0.1.0/conandata.yml" in names
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert "integration_pkg-0.1.0/conandata.yml" in names
 
 
 def test_build_sdist_includes_extra_profile(tmp_path, monkeypatch):
@@ -493,8 +517,8 @@ extra-profile = "profiles/cpp17.profile"
     monkeypatch.chdir(proj)
     monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
 
-    names = _sdist_names(tmp_path, "integration-pkg-0.1.0.tar.gz")
-    assert "integration-pkg-0.1.0/profiles/cpp17.profile" in names
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert "integration_pkg-0.1.0/profiles/cpp17.profile" in names
 
 
 def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
@@ -505,5 +529,5 @@ def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
     monkeypatch.chdir(proj)
     monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
 
-    names = _sdist_names(tmp_path, "integration-pkg-0.1.0.tar.gz")
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
     assert not [n for n in names if n.endswith(".so")]
