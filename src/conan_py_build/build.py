@@ -738,7 +738,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     project_metadata = _get_project_metadata(source_dir)
     version = _resolve_version(project_metadata, source_dir)
     name = project_metadata.get("name", "unknown")
-    sdist_name = f"{name}-{version}"
+    sdist_name = f"{_normalize_name(name)}-{version}"
     sdist_filename = f"{sdist_name}.tar.gz"
 
     print(f"Building sdist: {sdist_filename}")
