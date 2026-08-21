@@ -11,6 +11,9 @@ on:
     types: [prereleased, released]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     if: github.event_name != 'release'

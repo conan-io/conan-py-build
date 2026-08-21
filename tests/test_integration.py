@@ -450,3 +450,84 @@ exclude = ["README.md", "notes.txt"]
     assert "integration_pkg-0.1.0/README.md" not in names       # top-level file
     assert "integration_pkg-0.1.0/src/notes.txt" not in names   # inside a directory
     assert "integration_pkg-0.1.0/CMakeLists.txt" in names
+
+def _sdist_names(tmp_path, expected_filename):
+    """Build the sdist of the current project and return the tarball member names."""
+    sdist_dir = tmp_path / "dist"
+    sdist_dir.mkdir(exist_ok=True)
+    assert build_sdist(str(sdist_dir)) == expected_filename
+    with tarfile.open(sdist_dir / expected_filename, "r:gz") as tar:
+        return tar.getnames()
+
+
+def test_build_sdist_includes_wheel_packages_outside_src(tmp_path, monkeypatch):
+    """Integration: wheel.packages and version.file reach the sdist from outside src/."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pkg_name="ignored_pkg", pyproject_toml="""\
+[project]
+name = "outside-pkg"
+dynamic = ["version"]
+description = "Test"
+
+[build-system]
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build.version]
+file = "python/outside_pkg/__init__.py"
+
+[tool.conan-py-build.wheel]
+packages = ["python/outside_pkg"]
+""")
+    pkg = proj / "python" / "outside_pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text('__version__ = "4.5.6"', encoding="utf-8")
+    (pkg / "helper.py").write_text("", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "outside_pkg-4.5.6.tar.gz")
+    assert "outside_pkg-4.5.6/python/outside_pkg/__init__.py" in names
+    assert "outside_pkg-4.5.6/python/outside_pkg/helper.py" in names
+
+
+def test_build_sdist_includes_conandata(tmp_path, monkeypatch):
+    """Integration: conandata.yml travels with the recipe, as Conan's own export does."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj)
+    (proj / "conandata.yml").write_text('sources:\n  "0.1.0":\n    url: "x"\n', encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert "integration_pkg-0.1.0/conandata.yml" in names
+
+
+def test_build_sdist_includes_extra_profile(tmp_path, monkeypatch):
+    """Integration: a declared extra-profile reaches the sdist, so a build from it
+    applies the same settings instead of silently skipping the profile."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build]
+extra-profile = "profiles/cpp17.profile"
+""")
+    profiles = proj / "profiles"
+    profiles.mkdir()
+    (profiles / "cpp17.profile").write_text("[settings]\ncompiler.cppstd=17\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert "integration_pkg-0.1.0/profiles/cpp17.profile" in names
+
+
+def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
+    """Integration: a .so left by an in-place build does not reach the sdist."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj)
+    (proj / "src" / "integration_pkg" / "_core.cpython-312-x86_64-linux-gnu.so").write_bytes(b"\x00")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert not [n for n in names if n.endswith(".so")]

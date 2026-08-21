@@ -298,7 +298,20 @@ system's top-level file (`CMakeLists.txt`,
 `meson.build`), `cmake/`, `src/`, `include/`,
 README, LICENSE.
 Excluded: `__pycache__`, `*.pyc`, `.git`,
-`build`, `dist`.
+`build`, `dist`, and compiled extensions
+(`*.so`, `*.pyd`, `*.dylib`) left behind by an
+in-place or editable build.
+
+Whatever the backend itself reads is added too,
+wherever it lives, so you never repeat it under
+`include`: every path in `wheel.packages`,
+`version.file` (or setuptools-scm's
+`version_file`), `conandata.yml` next to the
+recipe, and every `extra-profile` variant.
+
+Paths your *own* build reads, such as sources or
+patches outside `src/`, are still yours to add
+with `include`.
 
 Patterns in `exclude` (and `include`) are matched against each file in two ways:
 
