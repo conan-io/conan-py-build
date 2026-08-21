@@ -802,6 +802,8 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
             source_path = source_dir / pattern
             if source_path.exists():
                 if source_path.is_file():
+                    if should_exclude(source_path):
+                        continue
                     arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
                     if arcname not in added_arcnames:
                         added_arcnames.add(arcname)
