@@ -85,6 +85,32 @@ jobs:
             examples/external-sources/dist/
             examples/basic-cython/dist/
 
+  build-from-sdist:
+    # `python -m build` with no distribution given builds the sdist and then the wheel
+    # *from that sdist*, which is the only thing in this workflow that exercises the
+    # tarball. pip falls back to the sdist whenever no wheel matches the user's
+    # platform, so a broken one only ever fails on a user's machine.
+    runs-on: ubuntu-latest
+    env:
+      CONAN_PY_BUILD_PROFILE_AUTODETECT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend
+        run: pip install -e . build
+      - name: Build each example through its sdist
+        run: |
+          pip install cython
+          python -m build --no-isolation examples/basic
+          python -m build --no-isolation examples/basic-pybind11
+          python -m build --no-isolation examples/basic-meson-pybind11
+          python -m build --no-isolation examples/basic-nanobind
+          python -m build --no-isolation examples/external-sources
+          python -m build --no-isolation examples/basic-cython
+        shell: bash
+
   docs:
     runs-on: ubuntu-latest
     steps:
