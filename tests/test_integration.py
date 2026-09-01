@@ -533,7 +533,7 @@ def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
     assert not [n for n in names if n.endswith(".so")]
 
 
-def test_wheel_packages_empty_ships_only_what_conan_staged(tmp_path, monkeypatch):
+def test_wheel_packages_empty_skips_source_packages(tmp_path, monkeypatch):
     """packages = [] keeps src/<name> out of the wheel and puts the staged module at its root."""
     proj = tmp_path / "proj"
     make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
@@ -563,3 +563,4 @@ class Pkg(ConanFile):
         names = zf.namelist()
     assert "flatmod" in names
     assert not [n for n in names if n.startswith("integration_pkg/")]
+    assert any(n.endswith(".dist-info/METADATA") for n in names)
