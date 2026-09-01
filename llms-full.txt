@@ -182,6 +182,10 @@ Passed per-invocation via
 | `build-profile` | Conan profile for build context | `default` |
 | `build-dir` | Persistent build directory | temp dir |
 
+A persistent `build-dir` keeps Conan's build tree across runs so recompilation
+is incremental. The staging area that becomes the wheel is deleted and recreated
+on every build, so wheel contents never carry files from a previous build.
+
 ## `pyproject.toml`
 
 All project-level options live under

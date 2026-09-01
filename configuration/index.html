@@ -796,6 +796,9 @@
 </tr>
 </tbody>
 </table>
+<p>A persistent <code>build-dir</code> keeps Conan's build tree across runs so recompilation
+is incremental. The staging area that becomes the wheel is deleted and recreated
+on every build, so wheel contents never carry files from a previous build.</p>
 <h2 id="pyprojecttoml"><code>pyproject.toml</code></h2>
 <p>All project-level options live under
 <code>[tool.conan-py-build]</code>:</p>
