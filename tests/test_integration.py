@@ -531,3 +531,35 @@ def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
 
     names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
     assert not [n for n in names if n.endswith(".so")]
+
+
+def test_wheel_packages_empty_ships_only_what_conan_staged(tmp_path, monkeypatch):
+    """packages = [] keeps src/<name> out of the wheel and puts the staged module at its root."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.wheel]
+packages = []
+""", conanfile="""\
+from conan import ConanFile
+from conan.tools.files import copy
+
+
+class Pkg(ConanFile):
+    name = "integration_pkg"
+    settings = "os", "compiler", "build_type", "arch"
+
+    def package(self):
+        copy(self, "flatmod", self.source_folder, self.package_folder)
+""")
+    (proj / "flatmod").write_text("stands in for a top-level extension module", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    wheel_dir = tmp_path / "dist"
+    wheel_dir.mkdir()
+    wheel_name = build_wheel(str(wheel_dir), config_settings=None)
+
+    with zipfile.ZipFile(wheel_dir / wheel_name) as zf:
+        names = zf.namelist()
+    assert "flatmod" in names
+    assert not [n for n in names if n.startswith("integration_pkg/")]

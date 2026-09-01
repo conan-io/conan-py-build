@@ -39,6 +39,13 @@ arguments* below).
 Default `packages` is `src/<normalized_project_name>`
 (hyphens → underscores).
 
+Set `packages = []` when the wheel has no pure-Python package, as for a project
+whose wheel is a single top-level extension module. Everything in the wheel then
+comes from what Conan's `package()` staged, so the module has to be installed at
+the root of the package folder (`install(TARGETS mymod DESTINATION .)` with
+CMake). Omitting the key keeps the default, so a missing `src/<name>` is still
+an error.
+
 ## Dynamic version
 
 Set `dynamic = ["version"]` in `[project]` and pick
