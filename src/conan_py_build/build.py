@@ -606,6 +606,13 @@ def _do_build_wheel(
     staging_dir = base_dir / "package"
     conan_out = (base_dir / "conan_out").resolve()
 
+    # The staging dir becomes the wheel platlib, so it must hold this build and
+    # nothing else. A persistent build-dir survives between runs, and a leftover
+    # package directory would be packaged again, shadowing the module built now.
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir)
+    staging_dir.mkdir(parents=True)
+
     user_presets_conf = "tools.cmake.cmaketoolchain:user_presets="  # empty = disable CMakeUserPresets.json
     python_executable_conf = _python_executable_conf()
 

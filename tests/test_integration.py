@@ -219,6 +219,39 @@ def test_wheel_does_not_contain_conan_output(integration_project):
     assert not leaked, f"Conan output leaked into wheel: {leaked}"
 
 
+def test_persistent_build_dir_does_not_reuse_stale_staging(tmp_path, monkeypatch):
+    """A reused build-dir must not carry the previous build's layout into the new wheel."""
+    _RENAMED_PYPROJECT = _DEFAULT_PYPROJECT + """
+[tool.conan-py-build.wheel]
+packages = ["src/renamed_pkg"]
+"""
+    proj = tmp_path / "proj"
+    make_integration_project(proj)
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    build_dir = tmp_path / "build-dir"
+    config_settings = {"build-dir": str(build_dir)}
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+
+    build_wheel(str(dist_dir), config_settings=config_settings)
+    assert (build_dir / "package" / "integration_pkg" / "__init__.py").is_file()
+
+    # Rename the Python package and build again into the same build directory.
+    (proj / "src" / "integration_pkg").rename(proj / "src" / "renamed_pkg")
+    (proj / "pyproject.toml").write_text(_RENAMED_PYPROJECT, encoding="utf-8")
+    build_wheel(str(dist_dir), config_settings=config_settings)
+
+    (wheel_path,) = dist_dir.glob("integration_pkg-0.1.0-*.whl")
+    with zipfile.ZipFile(wheel_path) as zf:
+        names = zf.namelist()
+
+    assert "renamed_pkg/__init__.py" in names
+    stale = [n for n in names if n.startswith("integration_pkg/")]
+    assert not stale, f"stale files from the previous build leaked into the wheel: {stale}"
+
+
 def test_build_wheel_uses_metadata_directory(integration_project):
     """build_wheel copies pre-built dist-info when metadata_directory is provided (PEP 517 contract)."""
     meta_dir = integration_project.work_dir / "meta"
