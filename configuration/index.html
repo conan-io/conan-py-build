@@ -873,6 +873,13 @@ profile file, use <code>extra-arguments</code> (see <em>Extra Conan
 arguments</em> below).</p>
 <p>Default <code>packages</code> is <code>src/&lt;normalized_project_name&gt;</code>
 (hyphens → underscores).</p>
+<p>Set <code>packages = []</code> when there is no Python package directory to copy from the
+source tree, for example when the wheel contains a single top-level extension
+module. In that case the wheel payload comes entirely from what Conan's
+<code>package()</code> stages, so the extension has to be installed at the root of the
+Conan package folder (<code>install(TARGETS mymod DESTINATION .)</code> with CMake).
+Omitting <code>packages</code> keeps the default <code>src/&lt;name&gt;</code> behavior, including its
+validation.</p>
 <h2 id="dynamic-version">Dynamic version</h2>
 <p>Set <code>dynamic = ["version"]</code> in <code>[project]</code> and pick
 <strong>one</strong> source:</p>
