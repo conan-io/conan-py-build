@@ -470,6 +470,18 @@ def test_get_wheel_packages_from_tool_config(tmp_path):
     assert {p.name for p in _get_wheel_packages(tmp_path, "myadder-pybind11")} == {"myadder", "extra_utils"}
 
 
+def test_get_wheel_packages_empty_list_beats_default(tmp_path):
+    """An explicit empty list means no Python package, even when the default exists."""
+    make_pyproject_minimal(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text() + '\n[tool.conan-py-build.wheel]\npackages = []\n'
+    )
+    (tmp_path / "src" / "test_pkg").mkdir(parents=True)
+    (tmp_path / "src" / "test_pkg" / "__init__.py").write_text("")
+    assert _get_wheel_packages(tmp_path, "test_pkg") == []
+
+
 def test_create_dist_info_creates_dir_and_metadata(tmp_path):
     staging = tmp_path / "staging"
     staging.mkdir()

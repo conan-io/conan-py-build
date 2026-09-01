@@ -583,7 +583,7 @@ def _get_wheel_packages(
     """Internal function to collect all python packages that need to be included in the final wheel."""
     tool = _get_tool_config(source_dir)
     wheel_packages = tool.get("wheel", {}).get("packages")
-    if wheel_packages and isinstance(wheel_packages, list):
+    if isinstance(wheel_packages, list):
         return [_check_wheel_package_path(source_dir, p) for p in wheel_packages]
     # Default: src/<name>; validate like explicit packages (must exist and have __init__.py).
     return [_check_wheel_package_path(source_dir, f"src/{name}")]
