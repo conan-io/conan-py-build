@@ -1,4 +1,7 @@
+from importlib.metadata import version
+
 from myadder._core import add, add_integers, greet
 
-__version__ = "0.1.0"
+# Read from the installed wheel metadata, so the version lives only in pyproject.toml.
+__version__ = version("myadder")
 __all__ = ["add", "add_integers", "greet"]
