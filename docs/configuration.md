@@ -53,14 +53,14 @@ validation.
 
 ## Version
 
-The default is a static `version` in `[project]`, and nothing else. To expose it
-at runtime, read it back from the installed metadata instead of writing it a
-second time:
+For most projects, declare the version statically in `[project]`, and nowhere
+else. To expose it at runtime, read it back from the installed metadata instead
+of writing it a second time:
 
 ```python
 from importlib.metadata import version
 
-__version__ = version("mypackage")
+__version__ = version("mypackage")  # [project].name, not the import name
 ```
 
 The recipe does not need a `version` either. The backend passes the resolved one
@@ -97,14 +97,25 @@ A recipe that is also consumed as a plain Conan
 package has to carry its own version, so that
 `conan create` works without the backend. Keep
 `pyproject.toml` as the single source and read it in
-`set_version()`:
+`set_version()`, but only as a fallback: conan-py-build
+already passes `--version`, and Conan assigns it to
+`self.version` before calling `set_version()`, so
+overwriting it unconditionally would discard the
+version the backend resolved:
 
 ```python
 def set_version(self):
+    if self.version is not None:
+        return  # already set from --version (conan-py-build) or the class attribute
+    # Adjust the path if conanfile.py doesn't sit next to pyproject.toml
+    # (e.g. a [tool.conan-py-build] conanfile-path pointing elsewhere).
     data = tomllib.loads(
         Path(self.recipe_folder, "pyproject.toml").read_text())
     self.version = data["project"]["version"]
 ```
+
+This way `conan create .` without `--version` still falls back to
+`pyproject.toml`.
 
 ## Profiles
 
