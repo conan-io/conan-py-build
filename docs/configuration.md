@@ -63,6 +63,10 @@ from importlib.metadata import version
 __version__ = version("mypackage")  # [project].name, not the import name
 ```
 
+This reads the installed `.dist-info`, so it only works once the wheel is
+installed. Running straight from a source checkout (for example `PYTHONPATH=src
+python -c "import mypackage"`) raises `PackageNotFoundError` instead.
+
 The recipe does not need a `version` either. The backend passes the resolved one
 to Conan, so a recipe can use `self.version` (in `conandata.yml` lookups, for
 example) without declaring it.
@@ -106,7 +110,7 @@ version the backend resolved:
 ```python
 def set_version(self):
     if self.version is not None:
-        return  # already set from --version (conan-py-build) or the class attribute
+        return  # already set from --version
     # Adjust the path if conanfile.py doesn't sit next to pyproject.toml
     # (e.g. a [tool.conan-py-build] conanfile-path pointing elsewhere).
     data = tomllib.loads(

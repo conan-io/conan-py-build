@@ -112,6 +112,12 @@ def test_resolve_version_missing_raises(tmp_path):
         _resolve_version(meta, tmp_path)
 
 
+def test_resolve_version_static_and_dynamic_raises(tmp_path):
+    meta = {"name": "pkg", "version": "1.0.0", "dynamic": ["version"]}
+    with pytest.raises(RuntimeError, match="cannot be both statically defined"):
+        _resolve_version(meta, tmp_path)
+
+
 def test_resolve_version_dynamic_without_version_config_raises(tmp_path):
     (tmp_path / "pyproject.toml").write_text("""[project]
 name = "pkg"

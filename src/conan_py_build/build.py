@@ -254,11 +254,17 @@ def _get_version_from_scm(source_dir: Path) -> str:
 
 def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     version = project_metadata.get("version")
-    if version:
-        return version
-
     dynamic = project_metadata.get("dynamic")
     version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
+
+    if version and version_is_dynamic:
+        raise RuntimeError(
+            "Project version cannot be both statically defined "
+            "and listed in [project].dynamic."
+        )
+
+    if version:
+        return version
 
     if not version_is_dynamic:
         raise RuntimeError(
