@@ -274,17 +274,17 @@ def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
 
     _validate_version_config(source_dir)
     if _uses_setuptools_scm(source_dir):
-        version = _get_version_from_scm(source_dir)
+        resolved_version = _get_version_from_scm(source_dir)
     else:
-        version = _get_version_from_file(source_dir)
-    if not version:
+        resolved_version = _get_version_from_file(source_dir)
+    if not resolved_version:
         raise RuntimeError(
             "dynamic = [\"version\"] but version could not be resolved. "
             "Set [tool.conan-py-build.version].file or provider = 'setuptools_scm'."
         )
 
-    project_metadata["version"] = version
-    return version
+    project_metadata["version"] = resolved_version
+    return resolved_version
 
 
 def _normalize_name(name: str) -> str:
