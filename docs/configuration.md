@@ -51,9 +51,26 @@ Conan package folder (`install(TARGETS mymod DESTINATION .)` with CMake).
 Omitting `packages` keeps the default `src/<name>` behavior, including its
 validation.
 
-## Dynamic version
+## Version
 
-Set `dynamic = ["version"]` in `[project]` and pick
+For most projects, declare the version statically in `[project]`, and nowhere
+else. To expose it at runtime, read it back from the installed metadata instead
+of writing it a second time:
+
+```python
+from importlib.metadata import version
+
+__version__ = version("mypackage")  # [project].name, not the import name
+```
+
+The recipe does not need a `version` either. The backend passes the resolved one
+to Conan, so a recipe can use `self.version` (in `conandata.yml` lookups, for
+example) without declaring it.
+
+### Dynamic version
+
+When the version lives somewhere else, set
+`dynamic = ["version"]` in `[project]` and pick
 **one** source:
 
 === "From a file"
@@ -73,6 +90,32 @@ Set `dynamic = ["version"]` in `[project]` and pick
 `version.file` and `version.provider` are mutually
 exclusive. For setuptools-scm options see
 [`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/).
+
+### When the recipe needs the version too
+
+A recipe that is also consumed as a plain Conan
+package has to carry its own version, so that
+`conan create` works without the backend. Keep
+`pyproject.toml` as the single source and read it in
+`set_version()`, but only as a fallback: conan-py-build
+already passes `--version`, and Conan assigns it to
+`self.version` before calling `set_version()`, so
+overwriting it unconditionally would discard the
+version the backend resolved:
+
+```python
+def set_version(self):
+    if self.version is not None:
+        return  # already set from --version (conan-py-build) or the class attribute
+    # Adjust the path if conanfile.py doesn't sit next to pyproject.toml
+    # (e.g. a [tool.conan-py-build] conanfile-path pointing elsewhere).
+    data = tomllib.loads(
+        Path(self.recipe_folder, "pyproject.toml").read_text())
+    self.version = data["project"]["version"]
+```
+
+This way `conan create .` without `--version` still falls back to
+`pyproject.toml`.
 
 ## Profiles
 
