@@ -105,10 +105,11 @@ def test_resolve_version_from_metadata():
     assert _resolve_version(meta, Path("/any")) == "1.0.0"
 
 
-def test_resolve_version_missing_falls_back_to_0_0_0(tmp_path):
+def test_resolve_version_missing_raises(tmp_path):
     make_pyproject_minimal(tmp_path)
     meta = {"name": "pkg"}
-    assert _resolve_version(meta, tmp_path) == "0.0.0"
+    with pytest.raises(RuntimeError, match="Project version is missing"):
+        _resolve_version(meta, tmp_path)
 
 
 def test_resolve_version_dynamic_without_version_config_raises(tmp_path):
