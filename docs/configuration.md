@@ -53,9 +53,8 @@ validation.
 
 ## Version
 
-For most projects, declare the version statically in `[project]`, and nowhere
-else. To expose it at runtime, read it back from the installed metadata instead
-of writing it a second time:
+Declare the version once, in `[project]`. To use it at runtime, read it back
+from the installed metadata:
 
 ```python
 from importlib.metadata import version
@@ -63,13 +62,13 @@ from importlib.metadata import version
 __version__ = version("mypackage")  # [project].name, not the import name
 ```
 
-This reads the installed `.dist-info`, so it only works once the wheel is
-installed. Running straight from a source checkout (for example `PYTHONPATH=src
-python -c "import mypackage"`) raises `PackageNotFoundError` instead.
+This only works once the wheel is installed. Running straight from a source
+checkout (for example `PYTHONPATH=src python -c "import mypackage"`) raises
+`PackageNotFoundError` instead.
 
-The recipe does not need a `version` either. The backend passes the resolved one
-to Conan, so a recipe can use `self.version` (in `conandata.yml` lookups, for
-example) without declaring it.
+The recipe does not need a `version` either: the backend passes the resolved one
+to Conan, so it can read `self.version` directly (e.g. in `conandata.yml`
+lookups).
 
 ### Dynamic version
 
@@ -117,9 +116,6 @@ def set_version(self):
         Path(self.recipe_folder, "pyproject.toml").read_text())
     self.version = data["project"]["version"]
 ```
-
-This way `conan create .` without `--version` still falls back to
-`pyproject.toml`.
 
 ## Profiles
 
