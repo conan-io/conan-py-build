@@ -371,6 +371,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Version">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#dynamic-version" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -378,6 +390,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -614,6 +631,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Version">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#dynamic-version" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -621,6 +650,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -883,9 +917,18 @@ module. In that case the wheel payload comes entirely from what Conan's
 Conan package folder (<code>install(TARGETS mymod DESTINATION .)</code> with CMake).
 Omitting <code>packages</code> keeps the default <code>src/&lt;name&gt;</code> behavior, including its
 validation.</p>
-<h2 id="dynamic-version">Dynamic version</h2>
-<p>Set <code>dynamic = ["version"]</code> in <code>[project]</code> and pick
-<strong>one</strong> source:</p>
+<h2 id="version">Version</h2>
+<p>Declare it once, in <code>[project]</code>, and read it back from installed metadata at
+runtime:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">version</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="n">version</span><span class="p">(</span><span class="s2">"mypackage"</span><span class="p">)</span>  <span class="c1"># [project].name, not the import name</span>
+</code></pre></div>
+<p>A recipe used through conan-py-build doesn't need to declare it either: the
+backend passes the resolved version to Conan, so a recipe can read
+<code>self.version</code> directly (e.g. in <code>conandata.yml</code> lookups).</p>
+<h3 id="dynamic-version">Dynamic version</h3>
+<p>When the version lives elsewhere, set <code>dynamic = ["version"]</code> and pick one:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">From a file</label><label for="__tabbed_1_2">From git tags (setuptools-scm)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -900,9 +943,9 @@ validation.</p>
 </div>
 </div>
 </div>
-<p><code>version.file</code> and <code>version.provider</code> are mutually
-exclusive. For setuptools-scm options see
-<a href="https://setuptools-scm.readthedocs.io/"><code>[tool.setuptools_scm]</code></a>.</p>
+<p><code>version.file</code> and <code>version.provider</code> are mutually exclusive. See
+<a href="https://setuptools-scm.readthedocs.io/"><code>[tool.setuptools_scm]</code></a> for
+setuptools-scm options.</p>
 <h2 id="profiles">Profiles</h2>
 <p>The wheel is built against the interpreter running the build (your venv, or the
 one cibuildwheel provides); pick the Python version by running the build with
