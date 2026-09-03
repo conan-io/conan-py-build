@@ -94,29 +94,6 @@ When the version lives somewhere else, set
 exclusive. For setuptools-scm options see
 [`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/).
 
-### When the recipe needs the version too
-
-A recipe that is also consumed as a plain Conan
-package has to carry its own version, so that
-`conan create` works without the backend. Keep
-`pyproject.toml` as the single source and read it in
-`set_version()`, but only as a fallback: conan-py-build
-already passes `--version`, and Conan assigns it to
-`self.version` before calling `set_version()`, so
-overwriting it unconditionally would discard the
-version the backend resolved:
-
-```python
-def set_version(self):
-    if self.version is not None:
-        return  # already set from --version
-    # Adjust the path if conanfile.py doesn't sit next to pyproject.toml
-    # (e.g. a [tool.conan-py-build] conanfile-path pointing elsewhere).
-    data = tomllib.loads(
-        Path(self.recipe_folder, "pyproject.toml").read_text())
-    self.version = data["project"]["version"]
-```
-
 ## Profiles
 
 The wheel is built against the interpreter running the build (your venv, or the
