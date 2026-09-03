@@ -4,7 +4,7 @@ from conan.tools.cmake import CMake, cmake_layout
 
 class MyadderConan(ConanFile):
     name = "myadder"
-    version = "0.1.0"
+    # No version here: conan-py-build passes --version, resolved from pyproject.toml.
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
 

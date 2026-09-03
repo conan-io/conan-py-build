@@ -51,10 +51,24 @@ Conan package folder (`install(TARGETS mymod DESTINATION .)` with CMake).
 Omitting `packages` keeps the default `src/<name>` behavior, including its
 validation.
 
-## Dynamic version
+## Version
 
-Set `dynamic = ["version"]` in `[project]` and pick
-**one** source:
+Declare it once, in `[project]`, and read it back from installed metadata at
+runtime:
+
+```python
+from importlib.metadata import version
+
+__version__ = version("mypackage")  # [project].name, not the import name
+```
+
+A recipe used through conan-py-build doesn't need to declare it either: the
+backend passes the resolved version to Conan, so a recipe can read
+`self.version` directly (e.g. in `conandata.yml` lookups).
+
+### Dynamic version
+
+When the version lives elsewhere, set `dynamic = ["version"]` and pick one:
 
 === "From a file"
 
@@ -70,9 +84,9 @@ Set `dynamic = ["version"]` in `[project]` and pick
     provider = "setuptools_scm"
     ```
 
-`version.file` and `version.provider` are mutually
-exclusive. For setuptools-scm options see
-[`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/).
+`version.file` and `version.provider` are mutually exclusive. See
+[`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/) for
+setuptools-scm options.
 
 ## Profiles
 

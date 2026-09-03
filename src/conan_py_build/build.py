@@ -257,21 +257,34 @@ def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     dynamic = project_metadata.get("dynamic")
     version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
 
-    if not version and version_is_dynamic:
-        _validate_version_config(source_dir)
-        if _uses_setuptools_scm(source_dir):
-            version = _get_version_from_scm(source_dir)
-        else:
-            version = _get_version_from_file(source_dir)
-        if not version:
-            raise RuntimeError(
-                "dynamic = [\"version\"] but version could not be resolved. "
-                "Set [tool.conan-py-build.version].file or provider = 'setuptools_scm'."
-            )
+    if version is not None and version_is_dynamic:
+        raise RuntimeError(
+            "Project version cannot be both statically defined "
+            "and listed in [project].dynamic."
+        )
 
-    version = version or "0.0.0"
-    project_metadata["version"] = version
-    return version
+    if version is not None:
+        return version
+
+    if not version_is_dynamic:
+        raise RuntimeError(
+            "Project version is missing. "
+            "Set [project].version or declare 'version' in [project].dynamic."
+        )
+
+    _validate_version_config(source_dir)
+    if _uses_setuptools_scm(source_dir):
+        resolved_version = _get_version_from_scm(source_dir)
+    else:
+        resolved_version = _get_version_from_file(source_dir)
+    if not resolved_version:
+        raise RuntimeError(
+            "dynamic = [\"version\"] but version could not be resolved. "
+            "Set [tool.conan-py-build.version].file or provider = 'setuptools_scm'."
+        )
+
+    project_metadata["version"] = resolved_version
+    return resolved_version
 
 
 def _normalize_name(name: str) -> str:
@@ -449,7 +462,7 @@ def _write_entry_points(dist_info_dir: Path, metadata: dict, project_dir: Path) 
 def _create_dist_info(staging_dir: Path, metadata: dict, project_dir: Path) -> Path:
     """Create .dist-info directory with metadata files."""
     name = _normalize_name(metadata.get("name", "unknown"))
-    version = metadata.get("version", "0.0.0")
+    version = metadata["version"]
 
     dist_info_dir = staging_dir / f"{name}-{version}.dist-info"
     dist_info_dir.mkdir(parents=True, exist_ok=True)
@@ -495,10 +508,9 @@ def prepare_metadata_for_build_wheel(
 
     source_dir = Path.cwd()
     project_metadata = _get_project_metadata(source_dir)
-    _resolve_version(project_metadata, source_dir)
+    version = _resolve_version(project_metadata, source_dir)
 
     name = _normalize_name(project_metadata.get("name", "unknown"))
-    version = project_metadata.get("version", "0.0.0")
     print(f"Preparing metadata for {name} {version}...", flush=True)
 
     dist_info_dir = _create_dist_info(metadata_dir, project_metadata, source_dir)
