@@ -257,13 +257,13 @@ def _resolve_version(project_metadata: dict, source_dir: Path) -> str:
     dynamic = project_metadata.get("dynamic")
     version_is_dynamic = isinstance(dynamic, list) and "version" in dynamic
 
-    if version and version_is_dynamic:
+    if version is not None and version_is_dynamic:
         raise RuntimeError(
             "Project version cannot be both statically defined "
             "and listed in [project].dynamic."
         )
 
-    if version:
+    if version is not None:
         return version
 
     if not version_is_dynamic:
