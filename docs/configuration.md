@@ -53,8 +53,8 @@ validation.
 
 ## Version
 
-Declare the version once, in `[project]`. To use it at runtime, read it back
-from the installed metadata:
+Declare it once, in `[project]`, and read it back from installed metadata at
+runtime:
 
 ```python
 from importlib.metadata import version
@@ -62,19 +62,13 @@ from importlib.metadata import version
 __version__ = version("mypackage")  # [project].name, not the import name
 ```
 
-This only works once the wheel is installed. Running straight from a source
-checkout (for example `PYTHONPATH=src python -c "import mypackage"`) raises
-`PackageNotFoundError` instead.
-
-The recipe does not need a `version` either: the backend passes the resolved one
-to Conan, so it can read `self.version` directly (e.g. in `conandata.yml`
+The recipe doesn't need it either: the backend passes the resolved version to
+Conan, so a recipe can read `self.version` directly (e.g. in `conandata.yml`
 lookups).
 
 ### Dynamic version
 
-When the version lives somewhere else, set
-`dynamic = ["version"]` in `[project]` and pick
-**one** source:
+When the version lives elsewhere, set `dynamic = ["version"]` and pick one:
 
 === "From a file"
 
@@ -90,9 +84,8 @@ When the version lives somewhere else, set
     provider = "setuptools_scm"
     ```
 
-`version.file` and `version.provider` are mutually
-exclusive. For setuptools-scm options see
-[`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/).
+See [`[tool.setuptools_scm]`](https://setuptools-scm.readthedocs.io/) for
+setuptools-scm options.
 
 ## Profiles
 
