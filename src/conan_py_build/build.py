@@ -32,9 +32,10 @@ def _get_wheel_tags() -> dict:
     Get wheel tags for the target platform.
 
     Auto-detects tags from the current platform, skipping manylinux/musllinux:
-    sys_tags() orders tags by pip install-time preference, not by what this
-    build has verified, so a manylinux tag can sort first even though the .so
-    just built hasn't been through auditwheel repair. Each WHEEL_* environment
+    sys_tags() describes tags supported by the running interpreter, not the
+    compatibility guarantees of the artifact being built. A manylinux/musllinux
+    tag must therefore not be inferred automatically before the wheel has been
+    checked/repaired by the appropriate tooling. Each WHEEL_* environment
     variable, if set, takes precedence over the auto-detected value:
         - WHEEL_PYVER: Python version tag (e.g., "cp312", "py3")
         - WHEEL_ABI: ABI tag (e.g., "cp312", "abi3", "none")

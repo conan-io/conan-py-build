@@ -434,16 +434,15 @@ def test_get_wheel_tags_individual_override(monkeypatch):
     }
 
 
-def test_get_wheel_tags_skips_manylinux(monkeypatch):
-    """Auto-detection skips manylinux/musllinux: sys_tags() can list them before
-    the plain linux tag, but that only reflects install-time preference, not
-    whether this build has been through auditwheel repair."""
+def test_get_wheel_tags_skips_manylinux_and_musllinux(monkeypatch):
+    """Both manylinux and musllinux are skipped independently: removing either
+    filter clause alone should make this fail."""
     from packaging.tags import Tag
     monkeypatch.setattr(
         "conan_py_build.build.sys_tags",
         lambda: iter([
             Tag("cp312", "cp312", "manylinux_2_28_x86_64"),
-            Tag("cp312", "cp312", "manylinux_2_17_x86_64"),
+            Tag("cp312", "cp312", "musllinux_1_2_x86_64"),
             Tag("cp312", "cp312", "linux_x86_64"),
         ]),
     )
@@ -454,8 +453,7 @@ def test_get_wheel_tags_skips_manylinux(monkeypatch):
 
 
 def test_get_wheel_tags_override_wins_over_manylinux_skip(monkeypatch):
-    """WHEEL_ARCH still overrides the auto-detected tag once a repair tool has
-    verified the real manylinux tag."""
+    """WHEEL_ARCH explicitly overrides the conservative auto-detected platform tag."""
     from packaging.tags import Tag
     monkeypatch.setattr(
         "conan_py_build.build.sys_tags",
