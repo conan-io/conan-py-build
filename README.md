@@ -39,6 +39,7 @@ from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
 
 class MyPackageConan(ConanFile):
+    name = "mypackage"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
 
