@@ -1077,9 +1077,13 @@ wheel <code>.dist-info/licenses/</code> and sdist PKG-INFO.</p>
 <h2 id="shared-libraries">Shared libraries</h2>
 <p>When your extension links to Conan-provided shared libraries, the backend:</p>
 <ol>
-<li>Deploys them to a <code>.conan-libs/</code> directory in the project source root.</li>
+<li>Deploys them to <code>build/.conan-libs/</code> under the project root.</li>
 <li>Patches the extension RPATH so that repair tools can discover and bundle
-   those libraries.</li>
+   those libraries. On Linux this patching is done with <code>patchelf
+   --add-rpath</code> during <code>build_wheel()</code> itself, before any repair tool runs, so
+   <code>patchelf</code> must already be available on the build machine (it is
+   preinstalled on manylinux images) rather than only at the later
+   <code>auditwheel</code> step.</li>
 </ol>
 <blockquote>
 <p><strong>Important:</strong> when Conan shared libraries are deployed, the wheel returned by
@@ -1133,8 +1137,10 @@ repair tools undetected.</p>
 <p>If your code uses symbols that exist in the Conan-provided version but not in
 the system version on your target machines, the import will fail at runtime
 despite the wheel passing the repair step. Linking that library statically
-removes the dependency on the system version. You can inspect which symbols your
-code requires with <code>nm -D</code> (Linux/macOS) or <code>dumpbin /exports</code> (Windows).</p>
+removes the dependency on the system version. You can inspect which symbols
+your extension imports from a given library with <code>nm -D -u</code> (Linux),
+<code>nm -u</code> (macOS), or <code>dumpbin /imports</code> (Windows). On Windows, <code>/exports</code>
+lists symbols the binary provides, not the ones it depends on.</p>
 <h2 id="wheel-exclude">Wheel exclude</h2>
 <p>Use <code>wheel.exclude</code> to drop files from the wheel that live inside a
 package directory but are only needed at build time (e.g. C/C++ binding

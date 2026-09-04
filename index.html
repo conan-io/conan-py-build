@@ -727,6 +727,7 @@ project, see
 <span class="kn">from</span><span class="w"> </span><span class="nn">conan.tools.cmake</span><span class="w"> </span><span class="kn">import</span> <span class="n">CMake</span><span class="p">,</span> <span class="n">cmake_layout</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyPackageConan</span><span class="p">(</span><span class="n">ConanFile</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"mypackage"</span>
     <span class="n">settings</span> <span class="o">=</span> <span class="s2">"os"</span><span class="p">,</span> <span class="s2">"compiler"</span><span class="p">,</span> <span class="s2">"build_type"</span><span class="p">,</span> <span class="s2">"arch"</span>
     <span class="n">generators</span> <span class="o">=</span> <span class="s2">"CMakeToolchain"</span><span class="p">,</span> <span class="s2">"CMakeDeps"</span>
 
