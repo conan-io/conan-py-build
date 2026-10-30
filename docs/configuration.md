@@ -362,6 +362,8 @@ Patterns in `include`, `exclude` and `wheel.exclude` use
 - `*` stays inside one directory, and `**` crosses directories, as in
   `third_party/**/*.h`.
 - A pattern that matches a directory matches everything inside it.
+- A pattern starting with `!` undoes what earlier patterns in the same list matched.
+  To leave files out of the sdist, `exclude` is simpler, since it wins over `include`.
 
 ```toml
 [tool.conan-py-build.sdist]

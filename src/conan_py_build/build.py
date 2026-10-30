@@ -913,19 +913,23 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                             added_arcnames.add(arcname)
                             tar.add(file_path, arcname=arcname)
 
-        # User entries are patterns, matched against every file that is not excluded. One
+        # User entries are matched together against every file that is not excluded. One
         # that adds no files is likely a typo, or a path under an exclusion such as build/.
-        project_files = _project_files(source_dir, exclude_patterns) if sdist_config["include"] else []
-        for entry in sdist_config["include"]:
+        include = sdist_config["include"]
+        project_files = _project_files(source_dir, exclude_patterns) if include else []
+        for entry in include:
+            # Comments and negations add no files.
+            if not entry.strip() or entry.startswith(("#", "!")):
+                continue
             spec = _gitignore_spec((entry,))
-            matches = [rel_path for rel_path in project_files if spec.match_file(rel_path.as_posix())]
-            if not matches:
+            if not any(spec.match_file(rel_path.as_posix()) for rel_path in project_files):
                 print(f"WARNING: sdist include entry {entry!r} added no files")
-            for rel_path in matches:
-                arcname = f"{sdist_name}/{rel_path.as_posix()}"
-                if arcname not in added_arcnames:
-                    added_arcnames.add(arcname)
-                    tar.add(source_dir / rel_path, arcname=arcname)
+        include_spec = _gitignore_spec(tuple(include))
+        for rel_path in project_files:
+            arcname = f"{sdist_name}/{rel_path.as_posix()}"
+            if include_spec.match_file(rel_path.as_posix()) and arcname not in added_arcnames:
+                added_arcnames.add(arcname)
+                tar.add(source_dir / rel_path, arcname=arcname)
 
         for rel_path_str in license_paths_sdist:
             src = source_dir / rel_path_str.replace("/", os.sep)

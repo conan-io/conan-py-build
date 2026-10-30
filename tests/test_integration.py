@@ -583,6 +583,27 @@ exclude = ["docs/drafts"]
     ]
 
 
+def test_build_sdist_include_negation(tmp_path, monkeypatch, capfd):
+    """A negation in include drops what earlier entries matched, and neither it nor a
+    comment prints a warning."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.sdist]
+include = ["docs/**", "!docs/private/**", "# design notes"]
+""")
+    files = ["docs/guide.md", "docs/private/notes.md"]
+    for rel in files:
+        (proj / rel).parent.mkdir(parents=True, exist_ok=True)
+        (proj / rel).write_text("x", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    included = [rel for rel in files if f"integration_pkg-0.1.0/{rel}" in names]
+    assert included == ["docs/guide.md"]
+    assert "sdist include entry" not in capfd.readouterr().out
+
+
 def test_build_sdist_include_follows_directory_symlinks(tmp_path, monkeypatch):
     """include follows a symlinked directory, such as third_party/lib pointing outside the
     project, and stops at a link that loops back to a directory above it."""
