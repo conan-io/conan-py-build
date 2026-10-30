@@ -9,7 +9,7 @@
 ## Docs
 
 - [Home](https://conan-py-build.conan.io): getting started with a minimal project (pyproject.toml, conanfile.py, and your build system of choice)
-- [Configuration](https://conan-py-build.conan.io/configuration/): --config-settings, pyproject.toml options, profiles, wheel tags (WHEEL_PYVER/ABI/ARCH), shared libraries, dynamic version, PEP 639 license files
+- [Configuration](https://conan-py-build.conan.io/configuration/): --config-settings, pyproject.toml options, profiles, wheel tags (WHEEL_PYVER/ABI/ARCH), local recipes, shared libraries, dynamic version, PEP 639 license files
 - [Examples](https://conan-py-build.conan.io/examples/): pybind11, nanobind, meson, cibuildwheel
 - [Development](https://conan-py-build.conan.io/development/): editable install, tests, docs
 

@@ -21,6 +21,7 @@ from conan_py_build.build import (
     _create_dist_info,
     _write_entry_points,
     _extra_arguments,
+    _local_recipes,
     _build_wheel_with_tags,
     _copy_license_files_from_paths,
     _validate_version_config,
@@ -380,6 +381,15 @@ def test_extra_arguments_rejects_non_list():
 def test_extra_arguments_rejects_non_string_items():
     with pytest.raises(RuntimeError, match="must be a list of strings"):
         _extra_arguments({"extra-arguments": ["-s", {"k": "v"}]})
+
+
+@pytest.mark.parametrize("value, error", [
+    ("recipes/a", "must be a list of strings"),
+    (["../elsewhere"], "must be inside project"),
+])
+def test_local_recipes_rejects_invalid_values(tmp_path, value, error):
+    with pytest.raises(RuntimeError, match=error):
+        _local_recipes({"local-recipes": value}, tmp_path)
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):
