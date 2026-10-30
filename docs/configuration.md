@@ -231,7 +231,10 @@ conan-center-index leave `version` out, so add it when you copy one, and list
 the folder that holds the `conanfile.py` (for example `recipes/hello/all`).
 
 Folders must be inside the project, and the sdist includes them, so a build
-from the sdist exports them again.
+from the sdist exports them again. If a recipe copies files from outside its
+folder in `export_sources()`, add those files to `sdist.include`. Otherwise a
+build from the sdist exports the recipe without them and fails when it builds
+that dependency.
 
 The exported recipes stay in the Conan cache after the build, as
 `clean-after-wheel` only removes the project's own package. Each build exports
