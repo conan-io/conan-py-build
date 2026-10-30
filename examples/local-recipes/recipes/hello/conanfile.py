@@ -25,9 +25,7 @@ class HelloConan(ConanFile):
         self.requires("fmt/12.1.0")
 
     def source(self):
-        get(self, "https://github.com/conan-io/libhello/archive/refs/tags/0.1.0.tar.gz",
-            sha256="4011e309758d97167c5404d9d8ee2c1eaf6e93e9c009c7d99b9839bb5ce623cd",
-            strip_root=True)
+        get(self, **self.conan_data["sources"][self.version], strip_root=True)
 
     def build(self):
         cmake = CMake(self)

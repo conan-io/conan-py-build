@@ -217,7 +217,8 @@ myproject/
 ├── conanfile.py          # self.requires("hello/0.1.0")
 └── recipes/
     └── hello/
-        └── conanfile.py  # name = "hello", version = "0.1.0"
+        ├── conanfile.py  # name = "hello", version = "0.1.0"
+        └── conandata.yml # sources: url and sha256 for 0.1.0
 ```
 
 Before the build, the backend runs `conan export` on each folder, so the
