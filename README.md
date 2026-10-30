@@ -85,6 +85,7 @@ See the [examples/](examples/) directory:
 - **[basic-meson-pybind11](examples/basic-meson-pybind11/)** — pybind11 + `fmt` built with Meson instead of CMake
 - **[basic-nanobind](examples/basic-nanobind/)** — nanobind + `fmt`, `extra-profile` for C++17
 - **[external-sources](examples/external-sources/)** — pybind11, C++ dep fetched in `source()`
+- **[local-recipes](examples/local-recipes/)** — pybind11, C++ dep with no ConanCenter recipe, built from a recipe in the project
 - **[cibw-example](examples/cibw-example/)** — pybind11 + [cibuildwheel](https://cibuildwheel.pypa.io/)
 
 ## License
