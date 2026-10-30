@@ -701,11 +701,11 @@ def _do_build_wheel(
     # Requirements resolve from the cache and the remotes, so a dependency with no recipe in
     # any remote is exported first. --build=missing in conan build then builds it from source.
     for recipe in _local_recipes(tool, source_dir):
-        print(f"Running conan export for local recipe {recipe}...", flush=True)
+        print(f"Running conan export (local recipe: {recipe})...", flush=True)
         try:
             conan_api.command.run(["export", str(recipe)])
         except Exception as e:
-            raise RuntimeError(f"Conan export of local recipe {recipe} failed: {e}") from e
+            raise RuntimeError(f"Conan export failed: {e}") from e
 
     source_cmd = ["source", resolved_conanfile, "--version", version]
     print("Running conan source...", flush=True)
