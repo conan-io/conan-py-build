@@ -196,6 +196,13 @@ extra-arguments = [
 ]
 ```
 
+The backend adds `Python3_EXECUTABLE` and
+`Python_EXECUTABLE`, set to the Python running the
+build, to `tools.cmake.cmaketoolchain:extra_variables`
+on top of what your profiles and `extra-arguments` set
+in that conf. It adds them only to your project.
+Dependencies built from source don't get them.
+
 Any Conan CLI flag works: `-s` / `-o` / `-c` (host),
 `-s:b` / `-o:b` / `-c:b` (build context),
 `--build=...`, `--lockfile=...`. Pair-form

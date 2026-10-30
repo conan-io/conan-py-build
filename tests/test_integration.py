@@ -168,8 +168,9 @@ def test_build_wheel_integration(integration_project, capfd):
     assert "source_called" in err
 
 
-def test_build_wheel_injects_python_executable_for_cmake(integration_project, capfd):
-    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable."""
+@pytest.mark.parametrize("user_variables", [None, "extra-profile", "extra-arguments"])
+def test_build_wheel_injects_python_executable_for_cmake(integration_project, capfd, user_variables):
+    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable, on top of the user's extra_variables."""
     _CONANFILE = """\
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
@@ -192,9 +193,20 @@ class Pkg(ConanFile):
         "cmake_minimum_required(VERSION 3.15)\n"
         "project(x)\n"
         'message(STATUS "PY3=${Python3_EXECUTABLE}")\n'
-        'message(STATUS "PY=${Python_EXECUTABLE}")\n',
+        'message(STATUS "PY=${Python_EXECUTABLE}")\n'
+        'message(STATUS "FOO=${FOO}")\n',
         encoding="utf-8",
     )
+    conf = 'tools.cmake.cmaketoolchain:extra_variables={"FOO": "bar", "Python_EXECUTABLE": "/from/user"}'
+    if user_variables == "extra-profile":
+        tool = 'extra-profile = "vars.profile"'
+        (integration_project.project_dir / "vars.profile").write_text(f"[conf]\n{conf}\n", encoding="utf-8")
+    elif user_variables == "extra-arguments":
+        tool = f"extra-arguments = ['-c={conf}']"
+    if user_variables:
+        (integration_project.project_dir / "pyproject.toml").write_text(
+            _DEFAULT_PYPROJECT + f"\n[tool.conan-py-build]\n{tool}\n", encoding="utf-8"
+        )
 
     wheel_dir = integration_project.work_dir / "dist"
     wheel_dir.mkdir()
@@ -203,6 +215,38 @@ class Pkg(ConanFile):
     output = "".join(capfd.readouterr())
     assert f"PY3={sys.executable}" in output
     assert f"PY={sys.executable}" in output
+    if user_variables:
+        assert "FOO=bar" in output
+
+
+def test_build_wheel_python_executable_skips_dependencies(tmp_path, monkeypatch):
+    """Dependencies built from source don't get the backend's Python3_EXECUTABLE/Python_EXECUTABLE."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build]
+local-recipes = ["recipes/localdep"]
+extra-arguments = ["--no-remote"]
+""", conanfile=_DEFAULT_CONANFILE + """
+    def requirements(self):
+        self.requires("localdep/1.0")
+""")
+    recipe = proj / "recipes" / "localdep"
+    recipe.mkdir(parents=True)
+    (recipe / "conanfile.py").write_text("""\
+from conan import ConanFile
+
+
+class Dep(ConanFile):
+    name = "localdep"
+    version = "1.0"
+
+    def generate(self):
+        assert self.conf.get("tools.cmake.cmaketoolchain:extra_variables") is None
+""", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    assert build_wheel(str(tmp_path / "dist")).endswith(".whl")
 
 
 def test_wheel_does_not_contain_conan_output(integration_project):
