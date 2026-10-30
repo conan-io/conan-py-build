@@ -1,0 +1,4 @@
+sources:
+  "0.1.0":
+    url: "https://github.com/conan-io/libhello/archive/refs/tags/0.1.0.tar.gz"
+    sha256: "4011e309758d97167c5404d9d8ee2c1eaf6e93e9c009c7d99b9839bb5ce623cd"

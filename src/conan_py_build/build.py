@@ -114,7 +114,7 @@ def _get_sdist_required_paths(source_dir: Path, name: str) -> List[str]:
     """
     Files the backend reads when it builds a wheel, so an sdist has to contain them:
     the Conan recipe and its ``conandata.yml``, any extra profiles, the file holding
-    the version, and the ``wheel.packages`` directories.
+    the version, and the ``wheel.packages`` and ``local-recipes`` directories.
 
     Paths are relative to the project root. Files that only the project's own build
     needs are not here, and come from ``default_include`` or ``sdist.include``.
@@ -148,6 +148,9 @@ def _get_sdist_required_paths(source_dir: Path, name: str) -> List[str]:
     source_resolved = source_dir.resolve()
     for package_dir in _get_wheel_packages(source_dir, name):
         required.append(package_dir.relative_to(source_resolved).as_posix())
+    # A local recipe can export more than its conanfile.py, such as conandata.yml or patches.
+    for recipe_dir in _local_recipes(tool, source_dir):
+        required.append(recipe_dir.relative_to(source_resolved).as_posix())
 
     return required
 
@@ -364,6 +367,30 @@ def _extra_arguments(tool_cfg: dict) -> List[str]:
             "[tool.conan-py-build].extra-arguments must be a list of strings."
         )
     return args
+
+
+def _local_recipes(tool_cfg: dict, source_dir: Path) -> List[Path]:
+    """Return ``[tool.conan-py-build].local-recipes`` as resolved folders.
+
+    Each folder holds a recipe that declares its own ``name`` and ``version``, and is
+    exported to the Conan cache before the build. They must live inside the project,
+    as the sdist has to carry them.
+    """
+    folders = tool_cfg.get("local-recipes", [])
+    if not isinstance(folders, list) or not all(isinstance(f, str) for f in folders):
+        raise RuntimeError("[tool.conan-py-build].local-recipes must be a list of strings.")
+    source_resolved = source_dir.resolve()
+    resolved = []
+    for folder in folders:
+        path = (source_dir / folder).resolve()
+        try:
+            path.relative_to(source_resolved)
+        except ValueError:
+            raise RuntimeError(
+                f"[tool.conan-py-build].local-recipes must be inside project: {folder!r}"
+            )
+        resolved.append(path)
+    return resolved
 
 
 def _clean_after_wheel(tool_cfg: dict) -> bool:
@@ -696,6 +723,15 @@ def _do_build_wheel(
 
     conanfile_path = tool.get("conanfile-path") or "."
     resolved_conanfile = str(_resolve_conanfile_path(conanfile_path, source_dir))
+
+    # Requirements resolve from the cache and the remotes, so a dependency with no recipe in
+    # any remote is exported first. --build=missing in conan build then builds it from source.
+    for recipe in _local_recipes(tool, source_dir):
+        print(f"Running conan export (local recipe: {recipe})...", flush=True)
+        try:
+            conan_api.command.run(["export", str(recipe)])
+        except Exception as e:
+            raise RuntimeError(f"Conan export failed: {e}") from e
 
     source_cmd = ["source", resolved_conanfile, "--version", version]
     print("Running conan source...", flush=True)

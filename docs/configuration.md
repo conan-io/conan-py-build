@@ -26,6 +26,7 @@ All project-level options live under
 | `extra-profile` | `[tool.conan-py-build]` | Extra Conan profile composed on top of the active one | (none) |
 | `extra-arguments` | `[tool.conan-py-build]` | Extra Conan CLI flags appended to `conan build` and `conan export-pkg` | `[]` |
 | `clean-after-wheel` | `[tool.conan-py-build]` | Remove the exported Conan reference from the cache after building the wheel | `true` |
+| `local-recipes` | `[tool.conan-py-build]` | Folders with Conan recipes to export to the cache before the build | `[]` |
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
@@ -200,6 +201,50 @@ Any Conan CLI flag works: `-s` / `-o` / `-c` (host),
 `--build=...`, `--lockfile=...`. Pair-form
 (`["-s", "compiler.cppstd=17"]`) is also accepted.
 
+## Local recipes
+
+When a dependency has no recipe in any of your Conan remotes, ship the recipe
+with the project and list its folder in `local-recipes`:
+
+```toml
+[tool.conan-py-build]
+local-recipes = ["recipes/hello"]
+```
+
+```
+myproject/
+├── pyproject.toml
+├── conanfile.py          # self.requires("hello/0.1.0")
+└── recipes/
+    └── hello/
+        ├── conanfile.py  # name = "hello", version = "0.1.0"
+        └── conandata.yml # sources: url and sha256 for 0.1.0
+```
+
+Before the build, the backend runs `conan export` on each folder, so the
+requirement resolves from the Conan cache. `conan build` then builds it from
+source, as it does with any requirement that has no binary.
+
+Each folder holds a `conanfile.py` that declares its `name` and `version`, next
+to any file it exports, such as `conandata.yml` or patches. Recipes from
+conan-center-index leave `version` out, so add it when you copy one, and list
+the folder that holds the `conanfile.py` (for example `recipes/hello/all`).
+
+Folders must be inside the project, and the sdist includes them, so a build
+from the sdist exports them again. If a recipe copies files from outside its
+folder in `export_sources()`, add those files to `sdist.include`. Otherwise a
+build from the sdist exports the recipe without them and fails when it builds
+that dependency.
+
+The exported recipes stay in the Conan cache after the build, as
+`clean-after-wheel` only removes the project's own package. Each build exports
+them again and makes them the latest revision of their reference. Another
+project in the same Conan home that requires the same reference gets this
+recipe too.
+
+The [local-recipes example](https://github.com/conan-io/conan-py-build/tree/main/examples/local-recipes)
+builds bindings for a library that is not in ConanCenter.
+
 ## Entry points (PEP 621)
 
 `[project.scripts]`, `[project.gui-scripts]` and
@@ -340,7 +385,8 @@ wherever it lives, so you never repeat it under
 `include`: every path in `wheel.packages`,
 `version.file` (or setuptools-scm's
 `version_file`), `conandata.yml` next to the
-recipe, and every `extra-profile` variant.
+recipe, every `extra-profile` variant, and every
+`local-recipes` folder.
 
 Paths your *own* build reads, such as sources or
 patches outside `src/`, are still yours to add

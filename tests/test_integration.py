@@ -619,6 +619,34 @@ def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
     assert not [n for n in names if n.endswith(".so")]
 
 
+def test_local_recipes(tmp_path, monkeypatch):
+    """A requirement that only a local recipe provides resolves with no remote, and the
+    whole recipe folder travels in the sdist, so a build from it exports it again."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build]
+local-recipes = ["recipes/localdep"]
+extra-arguments = ["--no-remote"]
+""", conanfile=_DEFAULT_CONANFILE + """
+    def requirements(self):
+        self.requires("localdep/1.0")
+""")
+    recipe = proj / "recipes" / "localdep"
+    recipe.mkdir(parents=True)
+    (recipe / "conanfile.py").write_text(
+        "from conan import ConanFile\n\n\nclass Dep(ConanFile):\n    name = \"localdep\"\n    version = \"1.0\"\n",
+        encoding="utf-8",
+    )
+    (recipe / "conandata.yml").write_text("sources: {}\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert "integration_pkg-0.1.0/recipes/localdep/conanfile.py" in names
+    assert "integration_pkg-0.1.0/recipes/localdep/conandata.yml" in names
+    assert build_wheel(str(tmp_path / "dist")).endswith(".whl")
+
+
 def test_wheel_packages_empty_skips_source_packages(tmp_path, monkeypatch):
     """packages = [] keeps src/<name> out of the wheel and puts the staged module at its root."""
     proj = tmp_path / "proj"
