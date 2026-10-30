@@ -449,6 +449,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#local-recipes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local recipes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#entry-points-pep-621" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -709,6 +720,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#local-recipes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local recipes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#entry-points-pep-621" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -869,6 +891,12 @@ on every build, so wheel contents never carry files from a previous build.</p>
 <td><code>[tool.conan-py-build]</code></td>
 <td>Remove the exported Conan reference from the cache after building the wheel</td>
 <td><code>true</code></td>
+</tr>
+<tr>
+<td><code>local-recipes</code></td>
+<td><code>[tool.conan-py-build]</code></td>
+<td>Folders with Conan recipes to export to the cache before the build</td>
+<td><code>[]</code></td>
 </tr>
 <tr>
 <td><code>version.file</code></td>
@@ -1049,6 +1077,39 @@ to 14):</p>
 <code>-s:b</code> / <code>-o:b</code> / <code>-c:b</code> (build context),
 <code>--build=...</code>, <code>--lockfile=...</code>. Pair-form
 (<code>["-s", "compiler.cppstd=17"]</code>) is also accepted.</p>
+<h2 id="local-recipes">Local recipes</h2>
+<p>When a dependency has no recipe in any of your Conan remotes, ship the recipe
+with the project and list its folder in <code>local-recipes</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build]</span>
+<span class="n">local-recipes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"recipes/hello"</span><span class="p">]</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>myproject/
+├── pyproject.toml
+├── conanfile.py          # self.requires("hello/0.1.0")
+└── recipes/
+    └── hello/
+        ├── conanfile.py  # name = "hello", version = "0.1.0"
+        └── conandata.yml # sources: url and sha256 for 0.1.0
+</code></pre></div>
+<p>Before the build, the backend runs <code>conan export</code> on each folder, so the
+requirement resolves from the Conan cache. <code>conan build</code> then builds it from
+source, as it does with any requirement that has no binary.</p>
+<p>Each folder holds a <code>conanfile.py</code> that declares its <code>name</code> and <code>version</code>, next
+to any file it exports, such as <code>conandata.yml</code> or patches. Recipes from
+conan-center-index leave <code>version</code> out, so add it when you copy one, and list
+the folder that holds the <code>conanfile.py</code> (for example <code>recipes/hello/all</code>).</p>
+<p>Folders must be inside the project, and the sdist includes them, so a build
+from the sdist exports them again. If a recipe copies files from outside its
+folder in <code>export_sources()</code>, add those files to <code>sdist.include</code>. Otherwise a
+build from the sdist exports the recipe without them and fails when it builds
+that dependency.</p>
+<p>The exported recipes stay in the Conan cache after the build, as
+<code>clean-after-wheel</code> only removes the project's own package. Each build exports
+them again and makes them the latest revision of their reference. Another
+project in the same Conan home that requires the same reference gets this
+recipe too.</p>
+<p>The <a href="https://github.com/conan-io/conan-py-build/tree/main/examples/local-recipes">local-recipes example</a>
+builds bindings for a library that is not in ConanCenter.</p>
 <h2 id="entry-points-pep-621">Entry points (PEP 621)</h2>
 <p><code>[project.scripts]</code>, <code>[project.gui-scripts]</code> and
 <code>[project.entry-points.*]</code> from <code>pyproject.toml</code> are
@@ -1165,7 +1226,8 @@ wherever it lives, so you never repeat it under
 <code>include</code>: every path in <code>wheel.packages</code>,
 <code>version.file</code> (or setuptools-scm's
 <code>version_file</code>), <code>conandata.yml</code> next to the
-recipe, and every <code>extra-profile</code> variant.</p>
+recipe, every <code>extra-profile</code> variant, and every
+<code>local-recipes</code> folder.</p>
 <p>Paths your <em>own</em> build reads, such as sources or
 patches outside <code>src/</code>, are still yours to add
 with <code>include</code>.</p>
