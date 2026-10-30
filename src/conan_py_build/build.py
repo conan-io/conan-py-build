@@ -1,5 +1,4 @@
 import ast
-import fnmatch
 import io
 import os
 import shutil
@@ -8,8 +7,9 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, Iterator, List, Optional, Tuple
 
+import pathspec
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
@@ -163,26 +163,45 @@ def _get_wheel_config(project_dir: Path) -> dict:
     }
 
 
-def _matches_exclude(rel: Path, patterns: list) -> bool:
-    rel_str = str(rel)
-    for pattern in patterns:
-        if fnmatch.fnmatch(rel_str, pattern):
-            return True
-        if any(fnmatch.fnmatch(part, pattern) for part in rel.parts):
-            return True
-    return False
+def _matches(spec: pathspec.GitIgnoreSpec, rel: Path, is_dir: bool = False) -> bool:
+    """Whether a path relative to the patterns' root matches sdist or wheel patterns, which
+    use .gitignore syntax. A directory gets a trailing slash so that ``docs/`` matches it."""
+    return bool(spec.match_file(rel.as_posix() + ("/" if is_dir else "")))
 
 
 def _make_wheel_ignore(exclude_patterns: list, package_root: Path):
+    spec = pathspec.GitIgnoreSpec.from_lines(exclude_patterns)
+
     def ignore(directory: str, names: list) -> list:
         base = Path(directory)
         ignored = []
         for name in names:
-            rel = (base / name).relative_to(package_root)
-            if _matches_exclude(rel, exclude_patterns):
+            path = base / name
+            if _matches(spec, path.relative_to(package_root), path.is_dir()):
                 ignored.append(name)
         return ignored
     return ignore
+
+
+def _project_files(source_dir: Path, should_exclude: Callable[..., bool]) -> Iterator[Path]:
+    """Every file in the project that is not excluded. Excluded directories, such as .git or
+    a build tree, are skipped instead of walked. Symlinked directories are followed, except
+    one that points back to a directory above it, which would loop forever."""
+    ancestors = {}
+    for root, dirs, files in os.walk(source_dir, followlinks=True):
+        stat = os.stat(root)
+        key = (stat.st_dev, stat.st_ino)
+        parents = ancestors.get(os.path.dirname(root), frozenset())
+        if key in parents:
+            dirs.clear()
+            continue
+        ancestors[root] = parents | {key}
+        base = Path(root)
+        dirs[:] = sorted(d for d in dirs if not should_exclude(base / d, is_dir=True))
+        for name in sorted(files):
+            path = base / name
+            if path.is_file() and not should_exclude(path):
+                yield path
 
 
 def _resolve_conanfile_path(conanfile_path: str, source_dir: Path) -> Path:
@@ -842,6 +861,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "dist",
         "*.egg-info",
         ".eggs",
+        # Tool environments, which an include pattern such as "*.h" would otherwise reach.
+        ".venv",
+        ".tox",
+        ".nox",
     ]
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
@@ -849,40 +872,53 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     std_meta_sdist = _get_standard_metadata(sdist_md, source_dir)
     pkg_info_content = str(std_meta_sdist.as_rfc822())
     license_paths_sdist = [p.as_posix() for p in (std_meta_sdist.license_files or [])]
-    include_patterns = default_include + sdist_config["include"]
-    exclude_patterns = default_exclude + sdist_config["exclude"]
+    exclude_spec = pathspec.GitIgnoreSpec.from_lines(default_exclude + sdist_config["exclude"])
+    include_specs = [(entry, pathspec.GitIgnoreSpec.from_lines([entry])) for entry in sdist_config["include"]]
 
-    def should_exclude(path: Path) -> bool:
+    def should_exclude(path: Path, is_dir: bool = False) -> bool:
         try:
             rel = path.relative_to(source_dir)
         except ValueError:
             rel = path
-        return _matches_exclude(rel, exclude_patterns)
+        return _matches(exclude_spec, rel, is_dir)
 
     sdist_path = sdist_dir / sdist_filename
 
     added_arcnames = set()
 
+    def add_file(tar: tarfile.TarFile, file_path: Path, rel: Path) -> None:
+        """Add a file once, as ``rel`` inside the sdist. The caller gives ``rel`` because a
+        default path, such as an absolute extra-profile, may lie outside the project."""
+        arcname = f"{sdist_name}/{rel.as_posix()}"
+        if arcname not in added_arcnames:
+            added_arcnames.add(arcname)
+            tar.add(file_path, arcname=arcname)
+
     with tarfile.open(sdist_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
-        for pattern in include_patterns:
-            source_path = source_dir / pattern
-            if source_path.exists():
-                if source_path.is_file():
-                    if should_exclude(source_path):
-                        continue
-                    arcname = f"{sdist_name}/{Path(pattern).as_posix()}"
-                    if arcname not in added_arcnames:
-                        added_arcnames.add(arcname)
-                        tar.add(source_path, arcname=arcname)
-                elif source_path.is_dir():
-                    for file_path in source_path.rglob("*"):
-                        if file_path.is_file() and not should_exclude(file_path):
-                            rel_path = file_path.relative_to(source_dir)
-                            arcname = f"{sdist_name}/{rel_path.as_posix()}"
-                            if arcname in added_arcnames:
-                                continue
-                            added_arcnames.add(arcname)
-                            tar.add(file_path, arcname=arcname)
+        # Defaults are paths, and the ones a project lacks are skipped.
+        for path in default_include:
+            source_path = source_dir / path
+            if source_path.is_file():
+                if not should_exclude(source_path):
+                    add_file(tar, source_path, Path(path))
+            elif source_path.is_dir():
+                for file_path in source_path.rglob("*"):
+                    if file_path.is_file() and not should_exclude(file_path):
+                        add_file(tar, file_path, file_path.relative_to(source_dir))
+
+        # User entries are patterns, matched against every file that is not excluded. One
+        # that matches none is likely a typo, or a path under an exclusion such as build/.
+        matched_entries = set()
+        if include_specs:
+            for file_path in _project_files(source_dir, should_exclude):
+                rel = file_path.relative_to(source_dir)
+                for entry, spec in include_specs:
+                    if _matches(spec, rel):
+                        matched_entries.add(entry)
+                        add_file(tar, file_path, rel)
+        for entry, _ in include_specs:
+            if entry not in matched_entries:
+                print(f"WARNING: sdist include entry {entry!r} added no files")
 
         for rel_path_str in license_paths_sdist:
             src = source_dir / rel_path_str.replace("/", os.sep)

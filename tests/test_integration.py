@@ -554,6 +554,59 @@ extra-profile = "profiles/cpp17.profile"
     assert "integration_pkg-0.1.0/profiles/cpp17.profile" in names
 
 
+def test_build_sdist_include_exclude_patterns(tmp_path, monkeypatch, capfd):
+    """sdist.include and sdist.exclude take .gitignore patterns. include adds what matches
+    but nothing in excluded directories such as .venv, and exclude drops a directory by its
+    path (docs/drafts). A user entry that adds no files prints a warning, and one that
+    repeats a default (src/) does not."""
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.sdist]
+include = ["recipes/**", "patches/*.patch", "docs/", "*.h", "src/", "missing/**", "build/*.h"]
+exclude = ["docs/drafts"]
+""")
+    files = ["recipes/dep/all/conanfile.py", "patches/fix.patch", "patches/notes.txt", "docs/guide.md",
+             "docs/drafts/wip.md", "top.h", ".venv/numpy.h", "build/config.h"]
+    for rel in files:
+        (proj / rel).parent.mkdir(parents=True, exist_ok=True)
+        (proj / rel).write_text("x", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    included = [rel for rel in files if f"integration_pkg-0.1.0/{rel}" in names]
+    assert included == ["recipes/dep/all/conanfile.py", "patches/fix.patch", "docs/guide.md", "top.h"]
+    warnings = [line for line in capfd.readouterr().out.splitlines() if "sdist include entry" in line]
+    assert warnings == [
+        "WARNING: sdist include entry 'missing/**' added no files",
+        "WARNING: sdist include entry 'build/*.h' added no files",
+    ]
+
+
+def test_build_sdist_include_follows_directory_symlinks(tmp_path, monkeypatch):
+    """include follows a symlinked directory, such as third_party/lib pointing outside the
+    project, and stops at a link that loops back to a directory above it."""
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    (shared / "a.h").write_text("x", encoding="utf-8")
+    proj = tmp_path / "proj"
+    make_integration_project(proj, pyproject_toml=_DEFAULT_PYPROJECT + """
+[tool.conan-py-build.sdist]
+include = ["third_party/"]
+""")
+    (proj / "third_party").mkdir()
+    try:
+        (proj / "third_party" / "lib").symlink_to(shared, target_is_directory=True)
+        (shared / "loop").symlink_to(shared, target_is_directory=True)
+    except OSError:
+        pytest.skip("cannot create symlinks")
+    monkeypatch.chdir(proj)
+    monkeypatch.setenv("CONAN_HOME", str(tmp_path / "conan_home"))
+
+    names = _sdist_names(tmp_path, "integration_pkg-0.1.0.tar.gz")
+    assert [n for n in names if "third_party" in n] == ["integration_pkg-0.1.0/third_party/lib/a.h"]
+
+
 def test_build_sdist_excludes_compiled_extensions(tmp_path, monkeypatch):
     """Integration: a .so left by an in-place build does not reach the sdist."""
     proj = tmp_path / "proj"

@@ -29,8 +29,8 @@ All project-level options live under
 | `version.file` | `[tool.conan-py-build.version]` | Python file with `__version__` | (none) |
 | `version.provider` | `[tool.conan-py-build.version]` | `"setuptools_scm"` for version from git tags | (none) |
 | `packages` | `[tool.conan-py-build.wheel]` | Paths to Python packages in the wheel | `["src/<name>"]` |
-| `exclude` | `[tool.conan-py-build.wheel]` | Glob patterns to drop files from the wheel | `[]` |
-| `include` / `exclude` | `[tool.conan-py-build.sdist]` | Glob patterns to add/remove from the sdist | `[]` / `[]` |
+| `exclude` | `[tool.conan-py-build.wheel]` | Patterns (`.gitignore` syntax) to drop files from the wheel | `[]` |
+| `include` / `exclude` | `[tool.conan-py-build.sdist]` | Patterns (`.gitignore` syntax) to add/remove from the sdist | `[]` / `[]` |
 
 Variants for extra profiles: `extra-profile-host`,
 `extra-profile-build`, `extra-profile-all`.
@@ -320,8 +320,8 @@ packages = ["src/mypkg"]
 exclude = ["binding/*.cpp", "binding/*.h"]
 ```
 
-Patterns are relative to each package root and support standard glob
-syntax (`*`, `?`, `**`).
+Patterns are relative to each package root and use the same `.gitignore`
+syntax as the sdist options (see [Sdist defaults](#sdist-defaults)).
 
 ## Sdist defaults
 
@@ -330,7 +330,8 @@ system's top-level file (`CMakeLists.txt`,
 `meson.build`), `cmake/`, `src/`, `include/`,
 README, LICENSE.
 Excluded: `__pycache__`, `*.pyc`, `.git`,
-`build`, `dist`, and compiled extensions
+`build`, `dist`, the tool environments `.venv`,
+`.tox` and `.nox`, and compiled extensions
 (`*.so`, `*.pyd`, `*.dylib`) left behind by an
 in-place or editable build.
 
@@ -343,15 +344,24 @@ recipe, and every `extra-profile` variant.
 
 Paths your *own* build reads, such as sources or
 patches outside `src/`, are still yours to add
-with `include`.
+with `include`. Exclusions win over `include`: an
+entry never adds a file that `exclude` or a
+default exclusion drops. An entry that adds no
+files prints a warning, whether it matches
+nothing or only excluded files, such as anything
+under `build/`.
 
-Patterns in `exclude` (and `include`) are matched against each file in two ways:
+Patterns in `include`, `exclude` and `wheel.exclude` use
+[`.gitignore` syntax](https://git-scm.com/docs/gitignore#_pattern_format):
 
-- Against the **full relative path** from the project root — so `src/binding/*.h`
-  or `*.pyc` (which matches `src/foo.pyc`) work as expected.
-- Against **each path component individually** — so a bare name like `__pycache__`
-  or `.git` excludes that directory wherever it appears in the tree, without
-  needing a `**/__pycache__` pattern.
+- A pattern with no `/`, or only a trailing one, matches at any level. `tests` or
+  `__pycache__` match those directories anywhere, and `*.pyc` matches `src/foo.pyc`.
+- A pattern with a `/` at the start or in the middle is relative to the root (the
+  project root, or each package root for `wheel.exclude`). `/NOTICE` matches only
+  the top-level file, and `patches/*.patch` only the patches directly in `patches/`.
+- `*` stays inside one directory, and `**` crosses directories, as in
+  `third_party/**/*.h`.
+- A pattern that matches a directory matches everything inside it.
 
 ```toml
 [tool.conan-py-build.sdist]
