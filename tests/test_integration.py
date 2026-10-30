@@ -170,7 +170,7 @@ def test_build_wheel_integration(integration_project, capfd):
 
 @pytest.mark.parametrize("user_variables", [None, "extra-profile", "extra-arguments"])
 def test_build_wheel_injects_python_executable_for_cmake(integration_project, capfd, user_variables):
-    """CMakeToolchain gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable, on top of the user's extra_variables."""
+    """CMake gets Python3_EXECUTABLE/Python_EXECUTABLE = sys.executable, on top of the user's extra_variables."""
     _CONANFILE = """\
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout

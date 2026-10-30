@@ -380,7 +380,7 @@ def _python_executable_conf() -> str:
     # "/" avoids breaking CMake's own escape parsing on Windows paths.
     python_path = sys.executable.replace("\\", "/")
     value = {"Python3_EXECUTABLE": python_path, "Python_EXECUTABLE": python_path}
-    # "&:" keeps it out of the dependencies, and "*=" keeps the user's extra_variables.
+    # "&:" limits it to this project, and "*=" merges it into the user's extra_variables.
     return f"&:tools.cmake.cmaketoolchain:extra_variables*={value!r}"
 
 
