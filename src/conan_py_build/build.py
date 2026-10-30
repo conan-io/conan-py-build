@@ -402,11 +402,12 @@ def _clean_after_wheel(tool_cfg: dict) -> bool:
 
 
 def _python_executable_conf() -> str:
-    """Conf that sets Python3_EXECUTABLE/Python_EXECUTABLE for CMake-based recipes."""
+    """Conf that sets Python3_EXECUTABLE/Python_EXECUTABLE for the project's CMake build."""
     # "/" avoids breaking CMake's own escape parsing on Windows paths.
     python_path = sys.executable.replace("\\", "/")
     value = {"Python3_EXECUTABLE": python_path, "Python_EXECUTABLE": python_path}
-    return f"tools.cmake.cmaketoolchain:extra_variables={value!r}"
+    # "&:" limits it to this project, and "*=" merges it into the user's extra_variables.
+    return f"&:tools.cmake.cmaketoolchain:extra_variables*={value!r}"
 
 
 def _resolve_default_profiles(conan_api, source_dir: Path, host_profile: str, build_profile: str) -> Tuple[str, str]:
@@ -753,12 +754,12 @@ def _do_build_wheel(
         str(runtime_deploy_dir),
         "-c",
         user_presets_conf,
-        "-c",
-        python_executable_conf,
         "--build=missing",
     ]
     build_cmd.extend(profile_args)
     build_cmd.extend(extra_args)
+    # Last, so it merges over the extra_variables set in extra-arguments too
+    build_cmd.extend(["-c", python_executable_conf])
 
     print(
         f"Running conan build (profiles: host={host_profile}, build={build_profile})...",
@@ -792,11 +793,10 @@ def _do_build_wheel(
         "",
         "-c",
         user_presets_conf,
-        "-c",
-        python_executable_conf,
     ]
     export_pkg_cmd.extend(profile_args)
     export_pkg_cmd.extend(extra_args)
+    export_pkg_cmd.extend(["-c", python_executable_conf])
     try:
         export_result = conan_api.command.run(export_pkg_cmd)
     except Exception as e:
