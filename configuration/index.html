@@ -919,13 +919,13 @@ on every build, so wheel contents never carry files from a previous build.</p>
 <tr>
 <td><code>exclude</code></td>
 <td><code>[tool.conan-py-build.wheel]</code></td>
-<td>Glob patterns to drop files from the wheel</td>
+<td>Patterns (<code>.gitignore</code> syntax) to drop files from the wheel</td>
 <td><code>[]</code></td>
 </tr>
 <tr>
 <td><code>include</code> / <code>exclude</code></td>
 <td><code>[tool.conan-py-build.sdist]</code></td>
-<td>Glob patterns to add/remove from the sdist</td>
+<td>Patterns (<code>.gitignore</code> syntax) to add/remove from the sdist</td>
 <td><code>[]</code> / <code>[]</code></td>
 </tr>
 </tbody>
@@ -1210,15 +1210,16 @@ sources co-located with the Python package):</p>
 <span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"src/mypkg"</span><span class="p">]</span>
 <span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"binding/*.cpp"</span><span class="p">,</span><span class="w"> </span><span class="s2">"binding/*.h"</span><span class="p">]</span>
 </code></pre></div>
-<p>Patterns are relative to each package root and support standard glob
-syntax (<code>*</code>, <code>?</code>, <code>**</code>).</p>
+<p>Patterns are relative to each package root and use the same <code>.gitignore</code>
+syntax as the sdist options (see <a href="#sdist-defaults">Sdist defaults</a>).</p>
 <h2 id="sdist-defaults">Sdist defaults</h2>
 <p>Included: <code>pyproject.toml</code>, <code>conanfile.py</code>, your build
 system's top-level file (<code>CMakeLists.txt</code>,
 <code>meson.build</code>), <code>cmake/</code>, <code>src/</code>, <code>include/</code>,
 README, LICENSE.
 Excluded: <code>__pycache__</code>, <code>*.pyc</code>, <code>.git</code>,
-<code>build</code>, <code>dist</code>, and compiled extensions
+<code>build</code>, <code>dist</code>, the tool environments <code>.venv</code>,
+<code>.tox</code> and <code>.nox</code>, and compiled extensions
 (<code>*.so</code>, <code>*.pyd</code>, <code>*.dylib</code>) left behind by an
 in-place or editable build.</p>
 <p>Whatever the backend itself reads is added too,
@@ -1230,14 +1231,25 @@ recipe, every <code>extra-profile</code> variant, and every
 <code>local-recipes</code> folder.</p>
 <p>Paths your <em>own</em> build reads, such as sources or
 patches outside <code>src/</code>, are still yours to add
-with <code>include</code>.</p>
-<p>Patterns in <code>exclude</code> (and <code>include</code>) are matched against each file in two ways:</p>
+with <code>include</code>. Exclusions win over <code>include</code>: an
+entry never adds a file that <code>exclude</code> or a
+default exclusion drops. An entry that adds no
+files prints a warning, whether it matches
+nothing or only excluded files, such as anything
+under <code>build/</code>.</p>
+<p>Patterns in <code>include</code>, <code>exclude</code> and <code>wheel.exclude</code> use
+<a href="https://git-scm.com/docs/gitignore#_pattern_format"><code>.gitignore</code> syntax</a>:</p>
 <ul>
-<li>Against the <strong>full relative path</strong> from the project root — so <code>src/binding/*.h</code>
-  or <code>*.pyc</code> (which matches <code>src/foo.pyc</code>) work as expected.</li>
-<li>Against <strong>each path component individually</strong> — so a bare name like <code>__pycache__</code>
-  or <code>.git</code> excludes that directory wherever it appears in the tree, without
-  needing a <code>**/__pycache__</code> pattern.</li>
+<li>A pattern with no <code>/</code>, or only a trailing one, matches at any level. <code>tests</code> or
+  <code>__pycache__</code> match those directories anywhere, and <code>*.pyc</code> matches <code>src/foo.pyc</code>.</li>
+<li>A pattern with a <code>/</code> at the start or in the middle is relative to the root (the
+  project root, or each package root for <code>wheel.exclude</code>). <code>/NOTICE</code> matches only
+  the top-level file, and <code>patches/*.patch</code> only the patches directly in <code>patches/</code>.</li>
+<li><code>*</code> stays inside one directory, and <code>**</code> crosses directories, as in
+  <code>third_party/**/*.h</code>.</li>
+<li>A pattern that matches a directory matches everything inside it.</li>
+<li>A pattern starting with <code>!</code> undoes what earlier patterns in the same list matched.
+  To leave files out of the sdist, <code>exclude</code> is simpler, since it wins over <code>include</code>.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.conan-py-build.sdist]</span>
 <span class="n">include</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"docs/"</span><span class="p">]</span>
