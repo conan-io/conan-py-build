@@ -1,5 +1,5 @@
 import ast
-import fnmatch
+import functools
 import io
 import os
 import shutil
@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import pathspec
 from conan.api.conan_api import ConanAPI
 from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
@@ -166,14 +167,39 @@ def _get_wheel_config(project_dir: Path) -> dict:
     }
 
 
+@functools.lru_cache(maxsize=None)
+def _gitignore_spec(patterns: Tuple[str, ...]) -> pathspec.GitIgnoreSpec:
+    return pathspec.GitIgnoreSpec.from_lines(patterns)
+
+
 def _matches_exclude(rel: Path, patterns: list) -> bool:
-    rel_str = str(rel)
-    for pattern in patterns:
-        if fnmatch.fnmatch(rel_str, pattern):
-            return True
-        if any(fnmatch.fnmatch(part, pattern) for part in rel.parts):
-            return True
-    return False
+    """Whether a path relative to the patterns' root matches sdist or wheel patterns, which
+    use .gitignore syntax."""
+    return bool(_gitignore_spec(tuple(patterns)).match_file(rel.as_posix()))
+
+
+def _project_files(source_dir: Path, exclude_patterns: list) -> List[Path]:
+    """Every file in the project, relative to it, that no exclude pattern matches. Excluded
+    directories, such as .git or a build tree, are skipped instead of walked. Symlinked
+    directories are followed, except one that points back to a directory above it, which
+    would loop forever."""
+    files = []
+    ancestors = {}
+    for root, dirs, names in os.walk(source_dir, followlinks=True):
+        stat = os.stat(root)
+        key = (stat.st_dev, stat.st_ino)
+        parents = ancestors.get(os.path.dirname(root), frozenset())
+        if key in parents:
+            dirs.clear()
+            continue
+        ancestors[root] = parents | {key}
+        rel_root = Path(root).relative_to(source_dir)
+        dirs[:] = sorted(d for d in dirs if not _matches_exclude(rel_root / d, exclude_patterns))
+        for name in sorted(names):
+            rel = rel_root / name
+            if (source_dir / rel).is_file() and not _matches_exclude(rel, exclude_patterns):
+                files.append(rel)
+    return files
 
 
 def _make_wheel_ignore(exclude_patterns: list, package_root: Path):
@@ -878,6 +904,10 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
         "dist",
         "*.egg-info",
         ".eggs",
+        # Tool environments, which an include pattern such as "*.h" would otherwise reach.
+        ".venv",
+        ".tox",
+        ".nox",
     ]
     sdist_md = dict(project_metadata)
     sdist_md["name"] = name
@@ -885,7 +915,6 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     std_meta_sdist = _get_standard_metadata(sdist_md, source_dir)
     pkg_info_content = str(std_meta_sdist.as_rfc822())
     license_paths_sdist = [p.as_posix() for p in (std_meta_sdist.license_files or [])]
-    include_patterns = default_include + sdist_config["include"]
     exclude_patterns = default_exclude + sdist_config["exclude"]
 
     def should_exclude(path: Path) -> bool:
@@ -900,7 +929,7 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
     added_arcnames = set()
 
     with tarfile.open(sdist_path, "w:gz", format=tarfile.PAX_FORMAT) as tar:
-        for pattern in include_patterns:
+        for pattern in default_include:
             source_path = source_dir / pattern
             if source_path.exists():
                 if source_path.is_file():
@@ -919,6 +948,24 @@ def build_sdist(sdist_directory: str, config_settings: Optional[dict] = None) ->
                                 continue
                             added_arcnames.add(arcname)
                             tar.add(file_path, arcname=arcname)
+
+        # User entries are matched together against every file that is not excluded. One
+        # that adds no files is likely a typo, or a path under an exclusion such as build/.
+        include = sdist_config["include"]
+        project_files = _project_files(source_dir, exclude_patterns) if include else []
+        for entry in include:
+            # Comments and negations add no files.
+            if not entry.strip() or entry.startswith(("#", "!")):
+                continue
+            spec = _gitignore_spec((entry,))
+            if not any(spec.match_file(rel_path.as_posix()) for rel_path in project_files):
+                print(f"WARNING: sdist include entry {entry!r} added no files")
+        include_spec = _gitignore_spec(tuple(include))
+        for rel_path in project_files:
+            arcname = f"{sdist_name}/{rel_path.as_posix()}"
+            if include_spec.match_file(rel_path.as_posix()) and arcname not in added_arcnames:
+                added_arcnames.add(arcname)
+                tar.add(source_dir / rel_path, arcname=arcname)
 
         for rel_path_str in license_paths_sdist:
             src = source_dir / rel_path_str.replace("/", os.sep)
