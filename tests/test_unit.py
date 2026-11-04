@@ -22,6 +22,7 @@ from conan_py_build.build import (
     _write_entry_points,
     _extra_arguments,
     _local_recipes,
+    _check_unknown_keys,
     _build_wheel_with_tags,
     _copy_license_files_from_paths,
     _validate_version_config,
@@ -390,6 +391,28 @@ def test_extra_arguments_rejects_non_string_items():
 def test_local_recipes_rejects_invalid_values(tmp_path, value, error):
     with pytest.raises(RuntimeError, match=error):
         _local_recipes({"local-recipes": value}, tmp_path)
+
+
+def test_check_unknown_keys_lists_them_all():
+    with pytest.raises(RuntimeError) as exc:
+        _check_unknown_keys({
+            "conanfile-path": ".", "extra-profiles": "a", "version": {"file": "f", "fle": "f"},
+            "wheel": {"py-api": "cp312"}, "sdist": {"inlcude": []},
+        })
+    assert str(exc.value).startswith(
+        "Unknown options: tool.conan-py-build.extra-profiles, tool.conan-py-build.version.fle, "
+        "tool.conan-py-build.wheel.py-api, tool.conan-py-build.sdist.inlcude."
+    )
+
+
+def test_check_unknown_keys_accepts_known_keys():
+    _check_unknown_keys({
+        "conanfile-path": ".", "extra-profile": "a", "extra-profile-host": "b",
+        "extra-profile-build": "c", "extra-profile-all": "d", "extra-arguments": [],
+        "clean-after-wheel": True, "local-recipes": [],
+        "version": {"file": "f", "provider": "setuptools_scm"},
+        "wheel": {"packages": [], "exclude": []}, "sdist": {"include": [], "exclude": []},
+    })
 
 
 def test_get_sdist_config_minimal_pyproject(tmp_path):
