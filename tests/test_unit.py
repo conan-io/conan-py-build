@@ -26,6 +26,8 @@ from conan_py_build.build import (
     _copy_license_files_from_paths,
     _validate_version_config,
     _get_version_from_scm,
+    get_requires_for_build_editable,
+    prepare_metadata_for_build_editable,
     prepare_metadata_for_build_wheel,
 )
 
@@ -706,3 +708,24 @@ build-backend = "conan_py_build.build"
     dist_info = tmp_path / "meta" / prepare_metadata_for_build_wheel(str(tmp_path / "meta"))
     assert (dist_info / "licenses" / "LICENSE").read_text() == "MIT"
     assert "License-File: LICENSE" in (dist_info / "METADATA").read_text(encoding="utf-8")
+
+
+def test_get_requires_for_build_editable(tmp_path, monkeypatch):
+    """Like the wheel hook, the editable one asks for setuptools-scm when it provides the
+    version, so an isolated `pip install -e .` gets it."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.conan-py-build.version]\nprovider = "setuptools_scm"\n', encoding="utf-8"
+    )
+    assert get_requires_for_build_editable() == ["setuptools-scm"]
+    make_pyproject_minimal(tmp_path)
+    assert get_requires_for_build_editable() == []
+
+
+def test_prepare_metadata_for_build_editable(tmp_path, monkeypatch):
+    """The editable metadata is the same as a normal wheel's."""
+    make_pyproject_minimal(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    name = prepare_metadata_for_build_editable(str(tmp_path / "meta"))
+    assert name == "test_pkg-1.2.3.dist-info"
+    assert "Version: 1.2.3" in (tmp_path / "meta" / name / "METADATA").read_text(encoding="utf-8")
