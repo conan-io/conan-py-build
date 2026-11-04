@@ -16,6 +16,7 @@ from conan.cli.cli import Cli
 from conan.tools.env import VirtualBuildEnv
 from distlib.wheel import Wheel
 
+from conan_py_build import __version__
 from conan_py_build.wheel_deploy import _set_deploy_rpath
 from packaging.tags import sys_tags
 from packaging.utils import canonicalize_name
@@ -71,7 +72,30 @@ def _get_project_metadata(project_dir: Path) -> dict:
 
 def _get_tool_config(project_dir: Path) -> dict:
     """Read [tool.conan-py-build] from pyproject.toml."""
-    return _read_pyproject(project_dir).get("tool", {}).get("conan-py-build", {})
+    tool = _read_pyproject(project_dir).get("tool", {}).get("conan-py-build", {})
+    _check_unknown_keys(tool)
+    return tool
+
+
+# Any other key in [tool.conan-py-build] fails the build, so add new options here.
+_KNOWN_KEYS = {
+    "conanfile-path", "extra-profile", "extra-profile-host", "extra-profile-build",
+    "extra-profile-all", "extra-arguments", "clean-after-wheel", "local-recipes",
+    "version.file", "version.provider", "wheel.packages", "wheel.exclude",
+    "sdist.include", "sdist.exclude",
+}
+
+
+def _check_unknown_keys(tool_cfg: dict) -> None:
+    keys = []
+    for key, value in tool_cfg.items():
+        keys += [f"{key}.{sub}" for sub in value] if isinstance(value, dict) else [key]
+    unknown = [f"tool.conan-py-build.{key}" for key in keys if key not in _KNOWN_KEYS]
+    if unknown:
+        raise RuntimeError(
+            f"Unknown options: {', '.join(unknown)}. Check their spelling, and whether they "
+            f"are available in conan-py-build {__version__}."
+        )
 
 
 def _read_version_from_file(path: Path) -> Optional[str]:
