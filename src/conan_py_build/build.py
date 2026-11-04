@@ -638,7 +638,7 @@ def build_editable(
     """
     PEP 660 hook: Build an editable wheel.
     """
-    print("WARNING: Editable install: building a normal wheel. Changes to Python files also need a reinstall.")
+    print("WARNING: Editable install: building a normal wheel. Any source change needs a reinstall.")
     return build_wheel(wheel_directory, config_settings, metadata_directory)
 
 
