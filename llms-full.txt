@@ -328,6 +328,26 @@ or `CONAN_HOME` / `.conanrc`). Set
 `CONAN_PY_BUILD_PROFILE_AUTODETECT=1` to autodetect
 the profile instead of requiring `default`.
 
+## Editable installs
+
+An editable install, such as `pip install -e .` or the
+project install that `uv sync` and `uv run` do, builds
+and installs a normal wheel. The environment gets its own
+copy of the Python files, so changes to them, like changes
+to compiled code, apply only after installing again.
+
+`uv sync` and `uv run` do not reinstall the project when
+you edit its sources, so run
+`uv sync --reinstall-package <name>` after a change. To
+have uv reinstall on its own, list your sources in
+[`cache-keys`](https://docs.astral.sh/uv/reference/settings/#cache-keys).
+
+Each reinstall runs the whole build again. A persistent
+`build-dir` (see [Config settings](#config-settings-c))
+keeps the build tree, so only what changed is recompiled.
+With uv, set it in `[tool.uv]` as
+`config-settings = { build-dir = "build" }`.
+
 ## Extra Conan arguments
 
 CLI flags appended to `conan build` and
