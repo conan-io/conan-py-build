@@ -575,6 +575,11 @@ def get_requires_for_build_sdist(config_settings: Optional[dict] = None) -> list
     return []
 
 
+def get_requires_for_build_editable(config_settings: Optional[dict] = None) -> list:
+    """PEP 660 hook: Return additional dependencies needed to build an editable wheel."""
+    return get_requires_for_build_wheel(config_settings)
+
+
 def prepare_metadata_for_build_wheel(
     metadata_directory: str,
     config_settings: Optional[dict] = None,
@@ -600,6 +605,14 @@ def prepare_metadata_for_build_wheel(
 
     dist_info_dir = _create_dist_info(metadata_dir, project_metadata, source_dir)
     return dist_info_dir.name
+
+
+def prepare_metadata_for_build_editable(
+    metadata_directory: str,
+    config_settings: Optional[dict] = None,
+) -> str:
+    """PEP 660 hook: Prepare editable wheel metadata, the same as for a normal wheel."""
+    return prepare_metadata_for_build_wheel(metadata_directory, config_settings)
 
 
 def build_wheel(
@@ -649,7 +662,7 @@ def build_editable(
     """
     PEP 660 hook: Build an editable wheel.
     """
-    print("WARNING: Editable install: building a normal wheel (no live reload of C++ extensions).")
+    print("WARNING: Editable install: building a normal wheel. Any source change needs a reinstall.")
     return build_wheel(wheel_directory, config_settings, metadata_directory)
 
 
