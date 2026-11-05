@@ -168,25 +168,11 @@ and installs a normal wheel. The environment gets its own
 copy of the Python files, so changes to them, like changes
 to compiled code, apply only after installing again.
 
-uv reinstalls the project only when one of its
-[`cache-keys`](https://docs.astral.sh/uv/reference/settings/#cache-keys)
-changes, and by default they cover `pyproject.toml`,
-`setup.py` and `setup.cfg`. After a change, run
-`uv sync --reinstall-package <name>`, or list the sources
-in `cache-keys` so that `uv sync` and `uv run` reinstall on
-their own. Your list replaces uv's defaults, so keep
-`pyproject.toml` in it:
-
-```toml
-[tool.uv]
-cache-keys = [
-    { file = "pyproject.toml" },
-    { file = "conanfile.py" },
-    { file = "CMakeLists.txt" },
-    { file = "src/**/*.py" },
-    { file = "src/**/*.cpp" },
-]
-```
+`uv sync` and `uv run` do not reinstall the project when
+you edit its sources, so run
+`uv sync --reinstall-package <name>` after a change. To
+have uv reinstall on its own, list your sources in
+[`cache-keys`](https://docs.astral.sh/uv/reference/settings/#cache-keys).
 
 Each reinstall runs the whole build again. A persistent
 `build-dir` (see [Config settings](#config-settings-c))
